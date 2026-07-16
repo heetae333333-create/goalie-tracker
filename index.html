@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b63ce">
+  <title>Goalie Tracker Pro</title>
+  <meta name="description" content="오프라인 아이스하키 골리 경기 기록 앱">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Goalie Tracker">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- 메인 화면 -->
+    <section id="homeScreen" class="screen active">
+      <header class="hero">
+        <div class="hero-icon">🏒</div>
+        <h1>Goalie Tracker Pro</h1>
+        <p>아이스하키 골리 기록 시스템</p>
+      </header>
+
+      <main class="menu">
+        <div id="offlineStatus" class="offline-status">
+          <span id="offlineStatusDot" class="status-dot"></span>
+          <span id="offlineStatusText">앱 상태 확인 중</span>
+        </div>
+
+        <button id="installAppBtn" class="install-btn hidden" type="button">
+          📲 태블릿에 앱 설치
+        </button>
+        <button id="newGameBtn" class="menu-btn">➕ 새 경기</button>
+        <button id="gamesBtn" class="menu-btn">📂 경기 목록</button>
+        <button id="goalieBtn" class="menu-btn">👥 골리 관리</button>
+        <button id="statsBtn" class="menu-btn">📊 시즌 통계</button>
+        <button id="backupBtn" class="menu-btn">💾 백업</button>
+        <button id="settingBtn" class="menu-btn">⚙ 설정</button>
+      </main>
+    </section>
+
+    <!-- 골리 관리 화면 -->
+    <section id="goalieScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromGoalies" class="back-btn" type="button">←</button>
+        <div>
+          <h2>👥 골리 관리</h2>
+          <p>여러 골리를 등록할 수 있습니다.</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <button id="addGoalieBtn" class="primary-btn" type="button">➕ 골리 추가</button>
+
+        <form id="goalieForm" class="panel hidden">
+          <label>
+            골리 이름
+            <input id="goalieName" type="text" maxlength="30" placeholder="예: 홍길동" autocomplete="off">
+          </label>
+          <label>
+            등번호
+            <input id="goalieNumber" type="number" min="0" max="99" placeholder="예: 31">
+          </label>
+          <label>
+            팀명
+            <input id="goalieTeam" type="text" maxlength="40" placeholder="예: 고등부 A팀" autocomplete="off">
+          </label>
+
+          <div class="button-row">
+            <button id="cancelGoalieBtn" class="secondary-btn" type="button">취소</button>
+            <button class="primary-btn" type="submit">💾 저장</button>
+          </div>
+        </form>
+
+        <div id="goalieList" class="card-list"></div>
+      </main>
+    </section>
+
+    <!-- 새 경기 정보 화면 -->
+    <section id="newGameScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromNewGame" class="back-btn" type="button">←</button>
+        <div>
+          <h2>🏒 새 경기</h2>
+          <p>경기 정보를 입력하세요.</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <form id="newGameForm" class="panel">
+          <label>
+            날짜
+            <input id="gameDate" type="date" required>
+          </label>
+
+          <label>
+            상대팀
+            <input id="opponentTeam" type="text" maxlength="50" placeholder="상대팀 이름" required autocomplete="off">
+          </label>
+
+          <label>
+            경기장
+            <input id="rinkName" type="text" maxlength="50" placeholder="경기장 이름" autocomplete="off">
+          </label>
+
+          <label>
+            대회명
+            <input id="tournamentName" type="text" maxlength="50" placeholder="정규리그 / 연습경기 등" autocomplete="off">
+          </label>
+
+          <label>
+            홈 / 원정
+            <select id="homeAway">
+              <option value="홈">🏠 홈</option>
+              <option value="원정">🚌 원정</option>
+              <option value="중립">⚪ 중립</option>
+            </select>
+          </label>
+
+          <label>
+            골리 선택
+            <select id="goalieSelect" required></select>
+          </label>
+
+          <button class="primary-btn start-btn" type="submit">🏒 경기 시작</button>
+        </form>
+      </main>
+    </section>
+
+    <!-- 경기 기록 화면 -->
+    <section id="recordScreen" class="screen">
+      <header class="topbar sticky">
+        <button id="backFromRecord" class="back-btn" type="button">←</button>
+        <div class="record-heading">
+          <h2 id="recordTitle">🏒 경기 기록</h2>
+          <p id="recordSubtitle"></p>
+        </div>
+      </header>
+
+      <main class="content record-content">
+        <section id="editGameInfoPanel" class="panel hidden">
+          <h3 class="edit-panel-title">✏ 경기 정보 수정</h3>
+
+          <label>
+            날짜
+            <input id="editGameDate" type="date">
+          </label>
+
+          <label>
+            상대팀
+            <input id="editOpponentTeam" type="text" maxlength="50">
+          </label>
+
+          <label>
+            경기장
+            <input id="editRinkName" type="text" maxlength="50">
+          </label>
+
+          <label>
+            대회명
+            <input id="editTournamentName" type="text" maxlength="50">
+          </label>
+
+          <label>
+            홈 / 원정
+            <select id="editHomeAway">
+              <option value="홈">🏠 홈</option>
+              <option value="원정">🚌 원정</option>
+              <option value="중립">⚪ 중립</option>
+            </select>
+          </label>
+
+          <label>
+            골리
+            <select id="editGoalieSelect"></select>
+          </label>
+        </section>
+
+        <div id="resumeNotice" class="notice hidden">
+          임시 저장된 경기 기록을 불러왔습니다.
+        </div>
+
+        <div id="periodContainer" class="period-grid"></div>
+
+        <section class="total-card">
+          <h3>TOTAL</h3>
+          <div class="total-stats">
+            <div>
+              <span class="stat-label">SOG</span>
+              <strong id="totalSog">0</strong>
+            </div>
+            <div>
+              <span class="stat-label">GA</span>
+              <strong id="totalGa">0</strong>
+            </div>
+            <div>
+              <span class="stat-label">SAVE%</span>
+              <strong id="totalSave">—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="analysis-card">
+          <div class="section-heading">
+            <div>
+              <h3>🥅 실점 분석</h3>
+              <p>GA 수만큼 실점 기록이 자동으로 생성됩니다.</p>
+            </div>
+          </div>
+          <div id="goalAnalysisList" class="analysis-list"></div>
+        </section>
+
+        <section class="shootout-card">
+          <div class="section-heading">
+            <div>
+              <h3>🎯 슛아웃</h3>
+              <p>3명·5명 또는 원하는 인원으로 기록할 수 있습니다.</p>
+            </div>
+          </div>
+
+          <label class="switch-row">
+            <span>슛아웃 기록</span>
+            <select id="shootoutEnabled">
+              <option value="no">없음</option>
+              <option value="yes">있음</option>
+            </select>
+          </label>
+
+          <div id="shootoutSettings" class="hidden">
+            <div class="shootout-size-grid">
+              <button class="choice-btn" type="button" data-shootout-size="3">3명</button>
+              <button class="choice-btn" type="button" data-shootout-size="5">5명</button>
+              <button class="choice-btn" type="button" data-shootout-size="custom">직접 입력</button>
+            </div>
+
+            <label id="customShootoutWrap" class="hidden">
+              슛아웃 인원
+              <input id="customShootoutCount" type="number" min="1" max="30" value="3">
+            </label>
+
+            <div id="shootoutSummary" class="shootout-summary">
+              슛아웃 인원을 선택하세요.
+            </div>
+
+            <div id="shootoutList" class="analysis-list"></div>
+          </div>
+        </section>
+
+        <p class="autosave-text">입력할 때마다 이 기기에 자동 저장됩니다.</p>
+
+        <div class="button-stack">
+          <button id="finishGameBtn" class="success-btn" type="button">✅ 경기 완료 및 목록 저장</button>
+          <button id="discardGameBtn" class="danger-btn" type="button">🗑 현재 경기 초기화</button>
+        </div>
+      </main>
+    </section>
+
+    <!-- 경기 목록 화면 -->
+    <section id="gamesScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromGames" class="back-btn" type="button">←</button>
+        <div>
+          <h2>📂 경기 목록</h2>
+          <p>완료한 경기를 다시 보고 공유할 수 있습니다.</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <div id="gamesList" class="card-list"></div>
+      </main>
+    </section>
+
+    <!-- 경기 상세 화면 -->
+    <section id="gameDetailScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromDetail" class="back-btn" type="button">←</button>
+        <div>
+          <h2>📋 경기 상세</h2>
+          <p id="detailSubtitle"></p>
+        </div>
+      </header>
+
+      <main class="content">
+        <div id="gameDetailContent"></div>
+
+        <div class="button-stack">
+          <button id="editSavedGameBtn" class="success-btn" type="button">✏ 저장 경기 수정</button>
+          <button id="copyGameTextBtn" class="primary-btn" type="button">📋 학부모 공유용 복사</button>
+          <button id="downloadGameTxtBtn" class="secondary-btn" type="button">📄 TXT 다운로드</button>
+          <button id="deleteSavedGameBtn" class="danger-btn" type="button">🗑 경기 삭제</button>
+        </div>
+      </main>
+    </section>
+
+
+
+    <!-- 앱 설치 및 오프라인 설정 화면 -->
+    <section id="installScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromInstall" class="back-btn" type="button">←</button>
+        <div>
+          <h2>📲 앱 설치 및 오프라인</h2>
+          <p>뮤패드 홈 화면에서 앱처럼 실행합니다.</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="detail-card install-guide-card">
+          <h3>현재 상태</h3>
+          <div class="install-state-grid">
+            <div class="install-state-item">
+              <span>네트워크</span>
+              <strong id="networkStateText">확인 중</strong>
+            </div>
+            <div class="install-state-item">
+              <span>오프라인 준비</span>
+              <strong id="cacheStateText">확인 중</strong>
+            </div>
+            <div class="install-state-item">
+              <span>설치 상태</span>
+              <strong id="installStateText">확인 중</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="detail-card install-guide-card">
+          <h3>📲 홈 화면에 설치</h3>
+          <p>
+            아래 버튼이 보이면 누르세요. 설치 후에는 브라우저 주소창 없이
+            일반 앱처럼 실행됩니다.
+          </p>
+
+          <button id="installFromSettingsBtn" class="primary-btn" type="button" disabled>
+            설치 가능 여부 확인 중
+          </button>
+
+          <div id="manualInstallGuide" class="manual-guide hidden">
+            <strong>수동 설치 방법</strong>
+            <ol>
+              <li>Chrome 오른쪽 위의 ⋮ 메뉴를 누릅니다.</li>
+              <li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 누릅니다.</li>
+              <li>설치를 확인합니다.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="detail-card install-guide-card">
+          <h3>✈ 오프라인 테스트</h3>
+          <ol class="install-steps">
+            <li>앱 화면을 한 번 정상적으로 엽니다.</li>
+            <li>홈 화면 설치를 완료합니다.</li>
+            <li>태블릿의 Wi-Fi를 끕니다.</li>
+            <li>홈 화면의 Goalie Tracker 아이콘을 누릅니다.</li>
+            <li>기록과 저장이 정상 작동하는지 확인합니다.</li>
+          </ol>
+        </section>
+
+        <section class="detail-card install-guide-card warning-card">
+          <h3>중요</h3>
+          <p>
+            PWA는 최초 1회 설치할 때 웹 주소로 열어야 합니다.
+            설치가 끝난 뒤에는 인터넷 없이 사용할 수 있습니다.
+          </p>
+        </section>
+      </main>
+    </section>
+
+    <!-- 백업 및 복원 화면 -->
+    <section id="backupScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromBackup" class="back-btn" type="button">←</button>
+        <div>
+          <h2>💾 백업 및 복원</h2>
+          <p>인터넷 없이 파일로 데이터를 보관합니다.</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="detail-card backup-card">
+          <h3>📤 전체 데이터 백업</h3>
+          <p>
+            골리, 완료 경기, 작성 중 경기까지 하나의 JSON 파일로 저장합니다.
+          </p>
+          <button id="exportBackupBtn" class="primary-btn" type="button">
+            백업 파일 만들기
+          </button>
+        </section>
+
+        <section class="detail-card backup-card">
+          <h3>📥 백업 파일 복원</h3>
+          <p>
+            다른 태블릿이나 초기화 후 저장해둔 백업 파일을 불러옵니다.
+          </p>
+
+          <label class="file-picker-label" for="backupFileInput">
+            백업 파일 선택
+          </label>
+          <input id="backupFileInput" class="file-input" type="file" accept=".json,application/json">
+
+          <div id="backupFileName" class="selected-file-name">
+            선택된 파일 없음
+          </div>
+
+          <button id="importBackupBtn" class="success-btn" type="button" disabled>
+            선택한 백업 복원
+          </button>
+        </section>
+
+        <section class="detail-card backup-card">
+          <h3>📊 현재 저장 현황</h3>
+          <div class="backup-summary-grid">
+            <div class="backup-summary-item">
+              <span>골리</span>
+              <strong id="backupGoalieCount">0</strong>
+            </div>
+            <div class="backup-summary-item">
+              <span>완료 경기</span>
+              <strong id="backupGameCount">0</strong>
+            </div>
+            <div class="backup-summary-item">
+              <span>작성 중 경기</span>
+              <strong id="backupDraftCount">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="detail-card backup-card danger-zone">
+          <h3>⚠ 전체 데이터 초기화</h3>
+          <p>
+            현재 기기에 저장된 모든 골리와 경기 기록을 삭제합니다.
+            삭제 후에는 백업 파일이 없으면 복구할 수 없습니다.
+          </p>
+          <button id="clearAllDataBtn" class="danger-btn" type="button">
+            전체 데이터 삭제
+          </button>
+        </section>
+      </main>
+    </section>
+
+    <!-- 시즌 통계 화면 -->
+    <section id="statsScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromStats" class="back-btn" type="button">←</button>
+        <div>
+          <h2>📊 시즌 통계</h2>
+          <p>골리별 경기 기록을 자동 집계합니다.</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="panel stats-filter-panel">
+          <label>
+            골리 선택
+            <select id="statsGoalieSelect"></select>
+          </label>
+        </section>
+
+        <div id="statsEmpty" class="empty-state hidden">
+          통계를 표시할 저장 경기가 없습니다.
+        </div>
+
+        <div id="statsContent" class="hidden">
+          <section class="stats-summary-grid">
+            <article class="stats-tile">
+              <span>경기 수</span>
+              <strong id="statsGames">0</strong>
+            </article>
+            <article class="stats-tile">
+              <span>시즌 SAVE%</span>
+              <strong id="statsSave">—</strong>
+            </article>
+            <article class="stats-tile">
+              <span>평균 SOG</span>
+              <strong id="statsAvgSog">0</strong>
+            </article>
+            <article class="stats-tile">
+              <span>평균 GA</span>
+              <strong id="statsAvgGa">0</strong>
+            </article>
+          </section>
+
+          <section class="detail-card">
+            <h3>🏆 최고 경기</h3>
+            <div id="bestGameText" class="best-game-text">—</div>
+          </section>
+
+          <section class="detail-card">
+            <h3>🎯 슛아웃 통계</h3>
+            <div id="shootoutStatsText">기록 없음</div>
+          </section>
+
+          <section class="detail-card">
+            <h3>📌 실점 원인 순위</h3>
+            <div id="reasonStats" class="rank-list"></div>
+          </section>
+
+          <section class="detail-card">
+            <h3>🥅 실점 위치 순위</h3>
+            <div id="locationStats" class="rank-list"></div>
+          </section>
+
+          <section class="detail-card">
+            <h3>🧤 실점 부위 순위</h3>
+            <div id="bodyStats" class="rank-list"></div>
+          </section>
+
+          <section class="detail-card">
+            <h3>📅 경기별 기록</h3>
+            <div id="statsGameRows" class="stats-game-rows"></div>
+          </section>
+        </div>
+      </main>
+    </section>
+
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
