@@ -1,30 +1,22 @@
-Goalie Tracker Pro v1.1
+Goalie Tracker Pro v1.3
 
-이 버전은 GitHub 저장소 루트에 아이콘 파일을 올린 현재 구조에 맞춘 수정본입니다.
+변경 내용:
+- 슛아웃 입력을 초간단 방식으로 변경
+- 상대 선수별로 '막음' 또는 '실점'만 선택
+- 슈팅 방향, 슈팅 종류, 메모 입력 제거
+- 3명 / 5명 / 직접 입력 기능은 그대로 유지
+- 막음 수, 실점 수, 슛아웃 SAVE% 자동 계산
+- 기존 저장 경기와 호환
+- 기존 슛아웃 데이터의 결과값은 그대로 유지
 
-업로드할 파일:
-- index.html
-- style.css
-- app.js
-- manifest.json
-- sw.js
-- icon-192.png
-- icon-512.png
-- icon-maskable-512.png
-- README.txt
+화면 예시:
+상대 1  [⭕ 막음] [❌ 실점]
+상대 2  [⭕ 막음] [❌ 실점]
+상대 3  [⭕ 막음] [❌ 실점]
 
-적용:
-1. GitHub 저장소에서 Add file → Upload files
-2. 위 파일들을 모두 업로드
-3. 같은 이름 파일은 자동으로 갱신
-4. Commit changes
-5. Pages 배포가 끝날 때까지 1~3분 대기
-6. 사이트를 새로고침
-7. 뮤패드 Chrome에서 사이트 접속 후 앱 설치
-
-수정 내용:
-- 아이콘 경로를 루트 기준으로 변경
-- manifest.json 경로 수정
-- index.html 아이콘 경로 수정
-- sw.js 캐시 경로 수정
-- 서비스워커 캐시 버전 v1.1로 갱신
+GitHub 적용:
+1. 압축 해제
+2. GitHub 저장소 Add file → Upload files
+3. 파일 전부 업로드 후 Commit changes
+4. 1~3분 뒤 온라인 상태에서 앱 새로고침
+5. 설치된 앱은 완전히 종료한 뒤 다시 실행

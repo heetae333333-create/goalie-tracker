@@ -1,4 +1,4 @@
-const CACHE_NAME = "goalie-tracker-v1.1.0";
+const CACHE_NAME = "goalie-tracker-v1.3.0";
 
 const APP_SHELL = [
   "./",

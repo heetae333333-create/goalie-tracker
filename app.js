@@ -334,34 +334,43 @@
 
   function renderPeriodCards() {
     periodContainer.innerHTML = PERIODS.map(period => `
-      <article class="period-card">
-        <div class="period-title">${period}</div>
-        <div class="period-body">
+      <article class="period-card compact-period-card">
+        <div class="period-title compact-period-title">${period}</div>
 
-          <div class="counter-block">
-            <div class="counter-label">SOG (유효슈팅)</div>
-            <div class="counter">
-              <button class="counter-btn" type="button"
-                data-period="${period}" data-field="sog" data-delta="-1">−</button>
-              <div id="${period}_sog" class="counter-value">0</div>
-              <button class="counter-btn" type="button"
-                data-period="${period}" data-field="sog" data-delta="1">＋</button>
-            </div>
-          </div>
+        <div class="compact-period-row">
+          <label class="compact-stat-box">
+            <span>SOG</span>
+            <input
+              id="${period}_sog"
+              class="compact-number-input"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1"
+              value="0"
+              data-period-input="${period}"
+              data-field="sog"
+              aria-label="${period} 상대 슈팅 수">
+          </label>
 
-          <div class="counter-block">
-            <div class="counter-label">GA (실점)</div>
-            <div class="counter">
-              <button class="counter-btn" type="button"
-                data-period="${period}" data-field="ga" data-delta="-1">−</button>
-              <div id="${period}_ga" class="counter-value">0</div>
-              <button class="counter-btn" type="button"
-                data-period="${period}" data-field="ga" data-delta="1">＋</button>
-            </div>
-          </div>
+          <label class="compact-stat-box">
+            <span>GA</span>
+            <input
+              id="${period}_ga"
+              class="compact-number-input"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1"
+              value="0"
+              data-period-input="${period}"
+              data-field="ga"
+              aria-label="${period} 실점 수">
+          </label>
 
-          <div class="period-save">
-            SAVE% <span id="${period}_save">—</span>
+          <div class="compact-save-box">
+            <span>SAVE%</span>
+            <strong id="${period}_save">—</strong>
           </div>
         </div>
       </article>
@@ -666,10 +675,7 @@
 
     while (currentGame.shootout.attempts.length < safeCount) {
       currentGame.shootout.attempts.push({
-        result: "",
-        direction: "",
-        type: "",
-        memo: ""
+        result: ""
       });
     }
 
@@ -703,60 +709,38 @@
       return;
     }
 
-    const directions = [
-      "좌상단", "좌중단", "좌하단", "중앙상단",
-      "5홀", "중앙하단", "우상단", "우중단", "우하단"
-    ];
-    const shotTypes = [
-      "포핸드", "백핸드", "스냅샷", "드래그",
-      "데크", "원타이머", "기타"
-    ];
-
     const saved = currentGame.shootout.attempts.filter(
       attempt => attempt.result === "saved"
     ).length;
+
     const goals = currentGame.shootout.attempts.filter(
       attempt => attempt.result === "goal"
     ).length;
+
     const decided = saved + goals;
-    const rate = decided > 0 ? ((saved / decided) * 100).toFixed(1) + "%" : "—";
+    const rate = decided > 0
+      ? ((saved / decided) * 100).toFixed(1) + "%"
+      : "—";
 
     shootoutSummary.textContent =
       `총 ${count}명 · 막음 ${saved} · 실점 ${goals} · SAVE% ${rate}`;
 
     shootoutList.innerHTML = currentGame.shootout.attempts.map((attempt, index) => `
-      <article class="analysis-item" data-shootout-index="${index}">
-        <h4>Shooter ${index + 1}</h4>
+      <article class="shootout-simple-item" data-shootout-index="${index}">
+        <div class="shootout-player-label">상대 ${index + 1}</div>
 
-        <div class="result-buttons">
+        <div class="shootout-simple-buttons">
           <button type="button"
-            class="result-btn saved ${attempt.result === "saved" ? "selected" : ""}"
-            data-shootout-result="saved">⭕ 막음</button>
+            class="shootout-result-btn saved ${attempt.result === "saved" ? "selected" : ""}"
+            data-shootout-result="saved">
+            ⭕ 막음
+          </button>
+
           <button type="button"
-            class="result-btn goal ${attempt.result === "goal" ? "selected" : ""}"
-            data-shootout-result="goal">❌ 실점</button>
-        </div>
-
-        <div class="analysis-grid">
-          <label>
-            슈팅 방향
-            <select data-shootout-field="direction">
-              ${selectOptions(directions, attempt.direction)}
-            </select>
-          </label>
-
-          <label>
-            슈팅 종류
-            <select data-shootout-field="type">
-              ${selectOptions(shotTypes, attempt.type)}
-            </select>
-          </label>
-
-          <label class="wide">
-            메모
-            <textarea data-shootout-field="memo"
-              placeholder="슈터 특징 또는 장면 메모">${escapeHtml(attempt.memo)}</textarea>
-          </label>
+            class="shootout-result-btn goal ${attempt.result === "goal" ? "selected" : ""}"
+            data-shootout-result="goal">
+            ❌ 실점
+          </button>
         </div>
       </article>
     `).join("");
@@ -813,15 +797,6 @@
     saveCurrentGame();
   });
 
-  shootoutList.addEventListener("input", event => {
-    const item = event.target.closest("[data-shootout-index]");
-    const field = event.target.dataset.shootoutField;
-    if (!item || !field || !currentGame) return;
-
-    const index = Number(item.dataset.shootoutIndex);
-    currentGame.shootout.attempts[index][field] = event.target.value;
-    saveCurrentGame();
-  });
 
   function updateRecordNumbers() {
     if (!currentGame) return;
@@ -832,8 +807,8 @@
     PERIODS.forEach(period => {
       const values = currentGame.periods[period];
 
-      document.getElementById(`${period}_sog`).textContent = values.sog;
-      document.getElementById(`${period}_ga`).textContent = values.ga;
+      document.getElementById(`${period}_sog`).value = values.sog;
+      document.getElementById(`${period}_ga`).value = values.ga;
       document.getElementById(`${period}_save`).textContent =
         saveRateText(values.sog, values.ga);
 
@@ -849,33 +824,43 @@
     renderGoalAnalysis();
   }
 
-  periodContainer.addEventListener("click", event => {
-    const button = event.target.closest("[data-period][data-field][data-delta]");
-    if (!button || !currentGame) return;
+  function updateCompactPeriodInput(input) {
+    if (!currentGame) return;
 
-    const period = button.dataset.period;
-    const field = button.dataset.field;
-    const delta = Number(button.dataset.delta);
+    const period = input.dataset.periodInput;
+    const field = input.dataset.field;
     const values = currentGame.periods[period];
 
-    let next = values[field] + delta;
-    next = Math.max(0, next);
+    let next = Number.parseInt(input.value, 10);
+    if (!Number.isFinite(next) || next < 0) next = 0;
 
-    // GA가 SOG보다 커지는 잘못된 입력을 막습니다.
     if (field === "ga" && next > values.sog) {
+      next = values.sog;
       showToast("GA는 해당 피리어드 SOG보다 클 수 없습니다.");
-      return;
     }
 
-    // SOG를 줄일 때 기존 GA보다 작아지는 것을 막습니다.
     if (field === "sog" && next < values.ga) {
+      next = values.ga;
       showToast("SOG는 해당 피리어드 GA보다 작을 수 없습니다.");
-      return;
     }
 
     values[field] = next;
+    input.value = next;
+
     updateRecordNumbers();
     saveCurrentGame();
+  }
+
+  periodContainer.addEventListener("input", event => {
+    const input = event.target.closest("[data-period-input][data-field]");
+    if (!input) return;
+    updateCompactPeriodInput(input);
+  });
+
+  periodContainer.addEventListener("change", event => {
+    const input = event.target.closest("[data-period-input][data-field]");
+    if (!input) return;
+    updateCompactPeriodInput(input);
   });
 
   function loadDraftIfExists() {

@@ -1126,3 +1126,175 @@ button:disabled {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+
+/* v1.2: 피리어드별 SOG/GA 간편 입력 */
+.compact-period-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: stretch;
+  min-height: 94px;
+}
+
+.compact-period-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  font-size: 22px;
+}
+
+.compact-period-row {
+  display: grid;
+  grid-template-columns: minmax(74px, 1fr) minmax(74px, 1fr) minmax(92px, 1.15fr);
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+}
+
+.compact-stat-box,
+.compact-save-box {
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+  text-align: center;
+  background: #f4f8fc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.compact-stat-box span,
+.compact-save-box span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.compact-number-input {
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 4px 5px;
+  color: var(--text);
+  text-align: center;
+  background: white;
+  border: 2px solid #b9c8d8;
+  border-radius: 10px;
+  font-size: 24px;
+  font-weight: 900;
+  -moz-appearance: textfield;
+}
+
+.compact-number-input::-webkit-outer-spin-button,
+.compact-number-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.compact-number-input:focus {
+  border-color: var(--blue);
+}
+
+.compact-save-box strong {
+  display: block;
+  color: var(--blue-dark);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+@media (max-width: 430px) {
+  .compact-period-card {
+    grid-template-columns: 58px 1fr;
+  }
+
+  .compact-period-title {
+    font-size: 19px;
+  }
+
+  .compact-period-row {
+    gap: 6px;
+    padding: 9px 7px;
+  }
+
+  .compact-stat-box,
+  .compact-save-box {
+    padding: 6px 4px;
+  }
+
+  .compact-number-input {
+    min-height: 42px;
+    font-size: 21px;
+  }
+
+  .compact-save-box strong {
+    font-size: 17px;
+  }
+}
+
+
+/* v1.3: 슛아웃 초간단 입력 */
+.shootout-simple-item {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+}
+
+.shootout-player-label {
+  color: var(--blue-dark);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.shootout-simple-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.shootout-result-btn {
+  min-height: 48px;
+  padding: 9px 8px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 11px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.shootout-result-btn.saved.selected {
+  color: white;
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.shootout-result-btn.goal.selected {
+  color: white;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (max-width: 430px) {
+  .shootout-simple-item {
+    grid-template-columns: 62px 1fr;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .shootout-player-label {
+    font-size: 14px;
+  }
+
+  .shootout-result-btn {
+    min-height: 44px;
+    padding: 7px 5px;
+    font-size: 14px;
+  }
+}
