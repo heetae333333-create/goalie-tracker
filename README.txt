@@ -1,30 +1,30 @@
-Goalie Tracker Pro v1.0
+Goalie Tracker Pro v1.1
 
-적용 방법:
-1. 압축을 풉니다.
-2. 이번 버전은 폴더 안의 모든 파일을 사용합니다.
-3. 기존 GoalieTracker 폴더에 아래 파일과 폴더를 모두 덮어씁니다.
-   - index.html
-   - style.css
-   - app.js
-   - manifest.json
-   - sw.js
-   - icons 폴더
-4. VS Code에서 index.html 우클릭 → Open with Live Server.
+이 버전은 GitHub 저장소 루트에 아이콘 파일을 올린 현재 구조에 맞춘 수정본입니다.
 
-v1.0 추가 기능:
-- PWA 앱 설치
-- 뮤패드 홈 화면 아이콘
-- 주소창 없는 단독 앱 화면
-- 서비스 워커 오프라인 캐시
-- 온라인/오프라인 상태 표시
-- 앱 설치 버튼 및 수동 설치 안내
-- Wi-Fi를 끈 뒤에도 앱 실행 및 기록 가능
-- 앱 아이콘 192px, 512px, maskable 아이콘 포함
+업로드할 파일:
+- index.html
+- style.css
+- app.js
+- manifest.json
+- sw.js
+- icon-192.png
+- icon-512.png
+- icon-maskable-512.png
+- README.txt
 
-중요:
-- PWA는 최초 1회 설치할 때 HTTPS 주소 또는 localhost/개발 서버로 열어야 합니다.
-- PC의 Live Server 화면을 태블릿에 파일만 복사해 file://로 열면 PWA 설치가 되지 않습니다.
-- 가장 쉬운 배포 방법은 GitHub Pages 같은 HTTPS 주소에 올린 뒤 뮤패드 Chrome에서 1회 설치하는 것입니다.
-- 설치가 끝난 뒤에는 인터넷 없이 사용할 수 있습니다.
-- 기록 데이터는 각 태블릿 내부 저장소에 저장되므로 백업 기능을 주기적으로 사용하세요.
+적용:
+1. GitHub 저장소에서 Add file → Upload files
+2. 위 파일들을 모두 업로드
+3. 같은 이름 파일은 자동으로 갱신
+4. Commit changes
+5. Pages 배포가 끝날 때까지 1~3분 대기
+6. 사이트를 새로고침
+7. 뮤패드 Chrome에서 사이트 접속 후 앱 설치
+
+수정 내용:
+- 아이콘 경로를 루트 기준으로 변경
+- manifest.json 경로 수정
+- index.html 아이콘 경로 수정
+- sw.js 캐시 경로 수정
+- 서비스워커 캐시 버전 v1.1로 갱신
