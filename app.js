@@ -308,12 +308,14 @@
       goalieId: goalie.id,
       goalieName: goalie.name,
       periods: createEmptyPeriods(),
+      opponentPeriods: createEmptyPeriods(),
       goals: [],
       shootout: {
         enabled: false,
         mode: "",
         count: 0,
-        attempts: []
+        attempts: [],
+        opponentAttempts: []
       }
     };
 
@@ -334,44 +336,73 @@
 
   function renderPeriodCards() {
     periodContainer.innerHTML = PERIODS.map(period => `
-      <article class="period-card compact-period-card">
-        <div class="period-title compact-period-title">${period}</div>
+      <article class="period-card comparison-period-card">
+        <div class="period-title">${period}</div>
 
-        <div class="compact-period-row">
-          <label class="compact-stat-box">
-            <span>SOG</span>
-            <input
-              id="${period}_sog"
-              class="compact-number-input"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              step="1"
-              value="0"
-              data-period-input="${period}"
-              data-field="sog"
-              aria-label="${period} 상대 슈팅 수">
-          </label>
+        <div class="goalie-compare-grid">
+          <section class="goalie-side our-goalie-side">
+            <div class="goalie-side-title">우리 골리</div>
 
-          <label class="compact-stat-box">
-            <span>GA</span>
-            <input
-              id="${period}_ga"
-              class="compact-number-input"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              step="1"
-              value="0"
-              data-period-input="${period}"
-              data-field="ga"
-              aria-label="${period} 실점 수">
-          </label>
+            <div class="period-body">
+              <div class="counter-block">
+                <div class="counter-label">SOG (상대 슈팅)</div>
+                <div class="counter">
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="our" data-field="sog" data-delta="-1">−</button>
+                  <div id="${period}_sog" class="counter-value">0</div>
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="our" data-field="sog" data-delta="1">＋</button>
+                </div>
+              </div>
 
-          <div class="compact-save-box">
-            <span>SAVE%</span>
-            <strong id="${period}_save">—</strong>
-          </div>
+              <div class="counter-block">
+                <div class="counter-label">GA (우리 실점)</div>
+                <div class="counter">
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="our" data-field="ga" data-delta="-1">−</button>
+                  <div id="${period}_ga" class="counter-value">0</div>
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="our" data-field="ga" data-delta="1">＋</button>
+                </div>
+              </div>
+
+              <div class="period-save">
+                SAVE% <span id="${period}_save">—</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="goalie-side opponent-goalie-side">
+            <div class="goalie-side-title">상대 골리</div>
+
+            <div class="period-body opponent-period-body">
+              <div class="counter-block">
+                <div class="counter-label">SOG (우리 슈팅)</div>
+                <div class="counter compact-counter">
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="opponent" data-field="sog" data-delta="-1">−</button>
+                  <div id="${period}_opp_sog" class="counter-value">0</div>
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="opponent" data-field="sog" data-delta="1">＋</button>
+                </div>
+              </div>
+
+              <div class="counter-block">
+                <div class="counter-label">GA (상대 실점)</div>
+                <div class="counter compact-counter">
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="opponent" data-field="ga" data-delta="-1">−</button>
+                  <div id="${period}_opp_ga" class="counter-value">0</div>
+                  <button class="counter-btn" type="button"
+                    data-period="${period}" data-side="opponent" data-field="ga" data-delta="1">＋</button>
+                </div>
+              </div>
+
+              <div class="period-save opponent-save">
+                SAVE% <span id="${period}_opp_save">—</span>
+              </div>
+            </div>
+          </section>
         </div>
       </article>
     `).join("");
@@ -443,6 +474,20 @@
     if (!Array.isArray(currentGame.shootout.attempts)) {
       currentGame.shootout.attempts = [];
     }
+
+    if (!Array.isArray(currentGame.shootout.opponentAttempts)) {
+      currentGame.shootout.opponentAttempts = [];
+    }
+
+    if (!currentGame.opponentPeriods || typeof currentGame.opponentPeriods !== "object") {
+      currentGame.opponentPeriods = createEmptyPeriods();
+    }
+
+    PERIODS.forEach(period => {
+      if (!currentGame.opponentPeriods[period]) {
+        currentGame.opponentPeriods[period] = { sog: 0, ga: 0 };
+      }
+    });
   }
 
   function totalGoalsAgainst() {
@@ -675,12 +720,25 @@
 
     while (currentGame.shootout.attempts.length < safeCount) {
       currentGame.shootout.attempts.push({
-        result: ""
+        result: "",
+        direction: "",
+        type: "",
+        memo: ""
       });
     }
 
     if (currentGame.shootout.attempts.length > safeCount) {
       currentGame.shootout.attempts.length = safeCount;
+    }
+
+    while (currentGame.shootout.opponentAttempts.length < safeCount) {
+      currentGame.shootout.opponentAttempts.push({
+        result: ""
+      });
+    }
+
+    if (currentGame.shootout.opponentAttempts.length > safeCount) {
+      currentGame.shootout.opponentAttempts.length = safeCount;
     }
 
     document.querySelectorAll("[data-shootout-size]").forEach(button => {
@@ -709,41 +767,98 @@
       return;
     }
 
-    const saved = currentGame.shootout.attempts.filter(
+    const directions = [
+      "좌상단", "좌중단", "좌하단", "중앙상단",
+      "5홀", "중앙하단", "우상단", "우중단", "우하단"
+    ];
+    const shotTypes = [
+      "포핸드", "백핸드", "스냅샷", "드래그",
+      "데크", "원타이머", "기타"
+    ];
+
+    const ourSaved = currentGame.shootout.attempts.filter(
       attempt => attempt.result === "saved"
     ).length;
-
-    const goals = currentGame.shootout.attempts.filter(
+    const ourGoals = currentGame.shootout.attempts.filter(
       attempt => attempt.result === "goal"
     ).length;
-
-    const decided = saved + goals;
-    const rate = decided > 0
-      ? ((saved / decided) * 100).toFixed(1) + "%"
+    const ourDecided = ourSaved + ourGoals;
+    const ourRate = ourDecided > 0
+      ? ((ourSaved / ourDecided) * 100).toFixed(1) + "%"
       : "—";
 
-    shootoutSummary.textContent =
-      `총 ${count}명 · 막음 ${saved} · 실점 ${goals} · SAVE% ${rate}`;
+    const oppSaved = currentGame.shootout.opponentAttempts.filter(
+      attempt => attempt.result === "saved"
+    ).length;
+    const oppGoals = currentGame.shootout.opponentAttempts.filter(
+      attempt => attempt.result === "goal"
+    ).length;
+    const oppDecided = oppSaved + oppGoals;
+    const oppRate = oppDecided > 0
+      ? ((oppSaved / oppDecided) * 100).toFixed(1) + "%"
+      : "—";
 
-    shootoutList.innerHTML = currentGame.shootout.attempts.map((attempt, index) => `
-      <article class="shootout-simple-item" data-shootout-index="${index}">
-        <div class="shootout-player-label">상대 ${index + 1}</div>
+    shootoutSummary.innerHTML = `
+      <div><strong>우리 골리</strong> · 막음 ${ourSaved} · 실점 ${ourGoals} · SAVE% ${ourRate}</div>
+      <div><strong>상대 골리</strong> · 막음 ${oppSaved} · 실점 ${oppGoals} · SAVE% ${oppRate}</div>
+    `;
 
-        <div class="shootout-simple-buttons">
-          <button type="button"
-            class="shootout-result-btn saved ${attempt.result === "saved" ? "selected" : ""}"
-            data-shootout-result="saved">
-            ⭕ 막음
-          </button>
+    shootoutList.innerHTML = currentGame.shootout.attempts.map((attempt, index) => {
+      const opponentAttempt = currentGame.shootout.opponentAttempts[index] || { result: "" };
 
-          <button type="button"
-            class="shootout-result-btn goal ${attempt.result === "goal" ? "selected" : ""}"
-            data-shootout-result="goal">
-            ❌ 실점
-          </button>
-        </div>
-      </article>
-    `).join("");
+      return `
+        <article class="analysis-item shootout-compare-item" data-shootout-index="${index}">
+          <h4>슛아웃 ${index + 1}</h4>
+
+          <section class="shootout-our-detail">
+            <div class="shootout-section-title">우리 골리 기록</div>
+
+            <div class="result-buttons">
+              <button type="button"
+                class="result-btn saved ${attempt.result === "saved" ? "selected" : ""}"
+                data-shootout-result="saved">⭕ 막음</button>
+              <button type="button"
+                class="result-btn goal ${attempt.result === "goal" ? "selected" : ""}"
+                data-shootout-result="goal">❌ 실점</button>
+            </div>
+
+            <div class="analysis-grid">
+              <label>
+                슈팅 방향
+                <select data-shootout-field="direction">
+                  ${selectOptions(directions, attempt.direction)}
+                </select>
+              </label>
+
+              <label>
+                슈팅 종류
+                <select data-shootout-field="type">
+                  ${selectOptions(shotTypes, attempt.type)}
+                </select>
+              </label>
+
+              <label class="wide">
+                메모
+                <textarea data-shootout-field="memo"
+                  placeholder="슈터 특징 또는 장면 메모">${escapeHtml(attempt.memo)}</textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="shootout-opponent-simple">
+            <div class="shootout-section-title">상대 골리 결과</div>
+            <div class="result-buttons">
+              <button type="button"
+                class="result-btn saved ${opponentAttempt.result === "saved" ? "selected" : ""}"
+                data-opponent-shootout-result="saved">⭕ 상대 막음</button>
+              <button type="button"
+                class="result-btn goal ${opponentAttempt.result === "goal" ? "selected" : ""}"
+                data-opponent-shootout-result="goal">🥅 우리 득점</button>
+            </div>
+          </section>
+        </article>
+      `;
+    }).join("");
   }
 
   shootoutEnabled.addEventListener("change", () => {
@@ -756,6 +871,7 @@
       currentGame.shootout.mode = "";
       currentGame.shootout.count = 0;
       currentGame.shootout.attempts = [];
+      currentGame.shootout.opponentAttempts = [];
       document.querySelectorAll("[data-shootout-size]").forEach(button => {
         button.classList.remove("selected");
       });
@@ -783,34 +899,61 @@
   });
 
   shootoutList.addEventListener("click", event => {
-    const resultButton = event.target.closest("[data-shootout-result]");
-    if (!resultButton || !currentGame) return;
+    if (!currentGame) return;
 
-    const item = resultButton.closest("[data-shootout-index]");
+    const item = event.target.closest("[data-shootout-index]");
     if (!item) return;
 
     const index = Number(item.dataset.shootoutIndex);
-    currentGame.shootout.attempts[index].result =
-      resultButton.dataset.shootoutResult;
 
-    renderShootout();
+    const ourResultButton = event.target.closest("[data-shootout-result]");
+    if (ourResultButton) {
+      currentGame.shootout.attempts[index].result =
+        ourResultButton.dataset.shootoutResult;
+      renderShootout();
+      saveCurrentGame();
+      return;
+    }
+
+    const opponentResultButton = event.target.closest("[data-opponent-shootout-result]");
+    if (opponentResultButton) {
+      currentGame.shootout.opponentAttempts[index].result =
+        opponentResultButton.dataset.opponentShootoutResult;
+      renderShootout();
+      saveCurrentGame();
+    }
+  });
+
+  shootoutList.addEventListener("input", event => {
+    const item = event.target.closest("[data-shootout-index]");
+    const field = event.target.dataset.shootoutField;
+    if (!item || !field || !currentGame) return;
+
+    const index = Number(item.dataset.shootoutIndex);
+    currentGame.shootout.attempts[index][field] = event.target.value;
     saveCurrentGame();
   });
 
-
   function updateRecordNumbers() {
     if (!currentGame) return;
+    ensureGameExtras();
 
     let totalSog = 0;
     let totalGa = 0;
 
     PERIODS.forEach(period => {
       const values = currentGame.periods[period];
+      const opponentValues = currentGame.opponentPeriods[period];
 
-      document.getElementById(`${period}_sog`).value = values.sog;
-      document.getElementById(`${period}_ga`).value = values.ga;
+      document.getElementById(`${period}_sog`).textContent = values.sog;
+      document.getElementById(`${period}_ga`).textContent = values.ga;
       document.getElementById(`${period}_save`).textContent =
         saveRateText(values.sog, values.ga);
+
+      document.getElementById(`${period}_opp_sog`).textContent = opponentValues.sog;
+      document.getElementById(`${period}_opp_ga`).textContent = opponentValues.ga;
+      document.getElementById(`${period}_opp_save`).textContent =
+        saveRateText(opponentValues.sog, opponentValues.ga);
 
       totalSog += values.sog;
       totalGa += values.ga;
@@ -824,43 +967,37 @@
     renderGoalAnalysis();
   }
 
-  function updateCompactPeriodInput(input) {
-    if (!currentGame) return;
+  periodContainer.addEventListener("click", event => {
+    const button = event.target.closest("[data-period][data-side][data-field][data-delta]");
+    if (!button || !currentGame) return;
 
-    const period = input.dataset.periodInput;
-    const field = input.dataset.field;
-    const values = currentGame.periods[period];
+    ensureGameExtras();
 
-    let next = Number.parseInt(input.value, 10);
-    if (!Number.isFinite(next) || next < 0) next = 0;
+    const period = button.dataset.period;
+    const side = button.dataset.side;
+    const field = button.dataset.field;
+    const delta = Number(button.dataset.delta);
+
+    const values = side === "opponent"
+      ? currentGame.opponentPeriods[period]
+      : currentGame.periods[period];
+
+    let next = values[field] + delta;
+    next = Math.max(0, next);
 
     if (field === "ga" && next > values.sog) {
-      next = values.sog;
-      showToast("GA는 해당 피리어드 SOG보다 클 수 없습니다.");
+      showToast("실점은 해당 피리어드 슈팅 수보다 클 수 없습니다.");
+      return;
     }
 
     if (field === "sog" && next < values.ga) {
-      next = values.ga;
-      showToast("SOG는 해당 피리어드 GA보다 작을 수 없습니다.");
+      showToast("슈팅 수는 해당 피리어드 실점보다 작을 수 없습니다.");
+      return;
     }
 
     values[field] = next;
-    input.value = next;
-
     updateRecordNumbers();
     saveCurrentGame();
-  }
-
-  periodContainer.addEventListener("input", event => {
-    const input = event.target.closest("[data-period-input][data-field]");
-    if (!input) return;
-    updateCompactPeriodInput(input);
-  });
-
-  periodContainer.addEventListener("change", event => {
-    const input = event.target.closest("[data-period-input][data-field]");
-    if (!input) return;
-    updateCompactPeriodInput(input);
   });
 
   function loadDraftIfExists() {
@@ -1053,8 +1190,13 @@
 
     PERIODS.forEach(period => {
       const values = game.periods?.[period] || { sog: 0, ga: 0 };
+      const opponentValues = game.opponentPeriods?.[period] || { sog: 0, ga: 0 };
+
       lines.push(
-        `${period}: SOG ${values.sog} / GA ${values.ga} / SAVE ${saveRateText(values.sog, values.ga)}`
+        `${period} 우리 골리: SOG ${values.sog} / GA ${values.ga} / SAVE ${saveRateText(values.sog, values.ga)}`
+      );
+      lines.push(
+        `${period} 상대 골리: SOG ${opponentValues.sog} / GA ${opponentValues.ga} / SAVE ${saveRateText(opponentValues.sog, opponentValues.ga)}`
       );
     });
 
@@ -1085,8 +1227,19 @@
       const so = shootoutTotals(game);
       lines.push("");
       lines.push("[슛아웃]");
-      lines.push(`총 ${so.count}명 / 막음 ${so.saved} / 실점 ${so.goals}`);
-      lines.push(`슛아웃 SAVE ${so.save}`);
+      lines.push(`우리 골리: 총 ${so.count}명 / 막음 ${so.saved} / 실점 ${so.goals}`);
+      lines.push(`우리 골리 슛아웃 SAVE ${so.save}`);
+
+      const opponentAttempts = game.shootout?.opponentAttempts || [];
+      const opponentSaved = opponentAttempts.filter(item => item.result === "saved").length;
+      const opponentGoals = opponentAttempts.filter(item => item.result === "goal").length;
+      const opponentDecided = opponentSaved + opponentGoals;
+      const opponentSave = opponentDecided > 0
+        ? ((opponentSaved / opponentDecided) * 100).toFixed(1) + "%"
+        : "—";
+
+      lines.push(`상대 골리: 막음 ${opponentSaved} / 실점 ${opponentGoals}`);
+      lines.push(`상대 골리 슛아웃 SAVE ${opponentSave}`);
     }
 
     return lines.join("\n");
