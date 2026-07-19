@@ -54,3 +54,89 @@
 .customer-grade.grade-d{background:#e5e7eb;color:#4b5563;border-color:#d1d5db}
 .customer-table{min-width:1180px}
 @media(max-width:900px){.customer-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-grade{width:26px;height:26px}}
+
+/* v1.9.1 자기자본금 모름 */
+.inline-field{display:flex;align-items:center;gap:12px}.inline-field>input{flex:1}.inline-check{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700}.inline-check input{width:18px;height:18px}.inline-field>input:disabled{background:#eef1f5;color:#8a93a3}
+
+/* v2.0 매물 내부 사진 */
+.photo-link{margin-top:5px;padding:3px 7px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#334155;font-size:12px;cursor:pointer}
+.photo-link:hover{background:#f1f5f9}
+.field-help{display:block;margin-top:5px;color:#64748b;font-size:12px;font-weight:400}
+.photo-upload-panel{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:12px;margin-bottom:14px;border:1px solid #dbe4ee;border-radius:10px;background:#f8fafc}
+.photo-upload-panel label{min-width:260px;flex:1}
+.photo-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-height:65vh;overflow:auto;padding:2px}
+.photo-card{margin:0;border:1px solid #dbe4ee;border-radius:10px;overflow:hidden;background:#fff}
+.photo-card img{display:block;width:100%;height:155px;object-fit:cover;background:#e2e8f0}
+.photo-card figcaption{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;font-size:12px}
+.photo-card figcaption span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-error{height:155px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;color:#64748b}
+.photo-empty{grid-column:1/-1}
+.photo-loading{padding:30px;text-align:center;color:#64748b}
+button.small{padding:4px 7px;font-size:11px}
+@media(max-width:640px){.photo-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-card img{height:130px}.photo-upload-panel label{min-width:100%}}
+
+
+.photo-download-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;margin-bottom:12px;border:1px solid #cfe8d7;border-radius:12px;background:#f3fbf6}
+.photo-download-bar button:disabled{opacity:.65;cursor:wait}
+
+/* v2.1 관리자 선택 매물 일괄 이관 */
+.bulk-listing-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px}
+.select-col{width:54px;text-align:center!important}
+.admin-listing-check,#selectAllAdminListings{width:18px;height:18px;cursor:pointer}
+.bulk-transfer-list{max-height:250px;overflow:auto;margin-top:14px;border:1px solid #e5e7eb;border-radius:12px;padding:8px 12px}
+.bulk-transfer-list>div{display:flex;justify-content:space-between;gap:16px;padding:9px 4px;border-bottom:1px solid #f0f2f5}
+.bulk-transfer-list>div:last-child{border-bottom:0}
+.bulk-transfer-list span{color:#64748b;font-size:13px;white-space:nowrap}
+@media(max-width:700px){.bulk-listing-toolbar{align-items:stretch;flex-direction:column}.bulk-transfer-list>div{flex-direction:column;gap:3px}.bulk-transfer-list span{white-space:normal}}
+
+/* CRM v3.0 */
+.v300-dashboard .alert-card{border-left:4px solid #f59e0b}.match-toolbar,.photo-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0}.match-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.match-card{position:relative;border:1px solid #e5e7eb;border-radius:14px;padding:16px;background:#fff}.match-score{position:absolute;right:14px;top:14px;font-weight:800;font-size:18px;color:#2563eb}.global-search{display:flex;gap:10px}.global-search input{flex:1}.search-result,.document-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #eee}.search-result span{flex:1;color:#6b7280}.audit-detail{max-width:520px;white-space:normal}.document-grid{margin-top:16px}.photo-card.cover{outline:4px solid #f59e0b}.photo-meta{display:grid;gap:6px;padding:8px}.photo-meta input,.photo-meta select{width:100%}.warning-notice{background:#fff7ed;border-color:#fdba74;color:#9a3412}.match-card button{margin-top:8px}
+@media(max-width:720px){.match-toolbar,.photo-toolbar,.global-search{flex-direction:column;align-items:stretch}.search-result,.document-item{align-items:flex-start;flex-direction:column}}
+
+/* v3.0.1 사이드바 일반/관리자 메뉴 구분 */
+.nav-section{display:grid;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid #334155}
+.nav-section-label{display:flex;align-items:center;justify-content:space-between;padding:7px 12px 5px;color:#94a3b8;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.nav-section-label.admin-label{color:#fbbf24}
+.admin-chip{padding:2px 6px;border:1px solid rgba(251,191,36,.55);border-radius:999px;font-size:9px;letter-spacing:.06em;background:rgba(245,158,11,.12);color:#fcd34d}
+.nav.admin-nav{border-left:3px solid transparent;padding-left:11px}
+.nav.admin-nav:hover,.nav.admin-nav.active{border-left-color:#f59e0b;background:#292524;color:#fff7ed}
+@media(max-width:760px){.sidebar nav{grid-template-columns:repeat(3,1fr)}.nav-section-label{grid-column:1/-1}.nav-section{grid-column:1/-1;grid-template-columns:repeat(3,1fr);border-top:1px solid #334155}.nav-section .nav-section-label{grid-column:1/-1}.nav.admin-nav{border-left:0;border-bottom:3px solid transparent;padding-left:6px}.nav.admin-nav:hover,.nav.admin-nav.active{border-left:0;border-bottom-color:#f59e0b}}
+
+/* v3.0.2 사이드바 스크롤 및 하단 메뉴 접근 수정 */
+.sidebar{
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+}
+.sidebar nav{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:6px;
+  padding-bottom:18px;
+  scrollbar-width:thin;
+  scrollbar-color:#475569 transparent;
+}
+.sidebar nav::-webkit-scrollbar{width:7px}
+.sidebar nav::-webkit-scrollbar-track{background:transparent}
+.sidebar nav::-webkit-scrollbar-thumb{background:#475569;border-radius:999px}
+.sidebar nav::-webkit-scrollbar-thumb:hover{background:#64748b}
+.sidebar-footer{
+  flex:0 0 auto;
+  margin-top:0;
+  padding-top:12px;
+  border-top:1px solid #334155;
+  background:var(--sidebar);
+}
+@media(max-width:760px){
+  .sidebar{height:auto;overflow:visible}
+  .sidebar nav{overflow:visible;padding-right:0;padding-bottom:0}
+  .sidebar-footer{border-top:0;padding-top:0}
+}
+
+
+/* CRM v3.1 정밀 자동매칭 */
+.match-type{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-weight:800;font-size:12px;margin:8px 0}
+.match-reason{background:#f8fafc;border:1px solid #dbe4ef;border-radius:12px;padding:12px;margin:10px 0;font-size:13px;line-height:1.6;color:#334155}
+.match-reason strong{display:block;color:#0f172a;margin-bottom:4px}
