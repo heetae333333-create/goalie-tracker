@@ -1289,3 +1289,126 @@ button:disabled {
     font-size: 25px;
   }
 }
+
+
+/* v1.7: 상대 골리 전체 TOTAL */
+.opponent-total-mini {
+  margin-top: 11px;
+  padding: 9px 12px 10px;
+  background: #fff6f6;
+  border: 1px solid #f0caca;
+  border-radius: 12px;
+}
+
+.opponent-total-title {
+  margin-bottom: 6px;
+  color: #9c2f2f;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.opponent-total-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  color: #6b7788;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.opponent-total-stats strong {
+  display: inline-block;
+  margin-left: 3px;
+  color: #202c3c;
+  font-size: 15px;
+}
+
+/* v1.7: 실점 원인 4단계 */
+.cause-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  background: #f7fafe;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+}
+
+.cause-flow label {
+  min-width: 0;
+  font-weight: 800;
+}
+
+.cause-flow select {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+}
+
+.cause-flow select:disabled {
+  opacity: .55;
+  background: #edf1f5;
+}
+
+.cause-step {
+  display: block;
+  color: var(--blue-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.movement-tag-wrap {
+  grid-column: 1 / -1;
+}
+
+.movement-tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.movement-tag-btn {
+  min-height: 36px;
+  padding: 7px 10px;
+  color: #4b596b;
+  background: white;
+  border: 1px solid #c7d3df;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.movement-tag-btn.selected {
+  color: white;
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.legacy-goal-note {
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  color: #7a5a12;
+  background: #fff8dc;
+  border: 1px solid #eadca7;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 680px) {
+  .cause-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .movement-tag-wrap {
+    grid-column: auto;
+  }
+}

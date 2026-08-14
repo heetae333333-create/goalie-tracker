@@ -1,0 +1,53 @@
+GOALIE TRACKER PRO v1.7
+
+이번 변경
+1. TOTAL 아래에 작은 '상대 골리 TOTAL' 추가
+   - 전체 피리어드 SOG / GA / SAVE% 자동 합산
+
+2. 실점 분석을 4단계 구조로 변경
+   ① 발생상황
+   ② 공격형태
+   ③ 마무리
+   ④ 추가태그(복수 선택 가능)
+
+발생상황
+- Rush
+- Odd-man Rush
+- Breakaway
+- Turnover
+- Zone Play
+- In-tight
+- Rebound
+- Scramble
+- Behind Net
+- Special Teams
+
+추가태그
+- East-West
+- Cross-crease
+- Backdoor
+- Low-to-High
+- High-to-Low
+- Behind-the-net Pass
+
+통계 화면에도
+- 발생상황 순위
+- 공격형태 순위
+- 마무리 순위
+- 패스/이동 태그 순위
+가 추가됩니다.
+
+GitHub 적용
+1. ZIP 압축 해제
+2. goalie-tracker 저장소 → Add file → Upload files
+3. 아래 파일을 저장소 루트에 업로드
+   index.html
+   style.css
+   app.js
+   manifest.json
+   sw.js
+   icon-192.png
+   icon-512.png
+   icon-maskable-512.png
+4. Commit changes
+5. 1~3분 후 시크릿 창에서 먼저 확인

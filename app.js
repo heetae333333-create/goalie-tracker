@@ -462,6 +462,13 @@
       currentGame.goals = [];
     }
 
+    currentGame.goals.forEach(goal => {
+      if (typeof goal.causePrimary !== "string") goal.causePrimary = "";
+      if (typeof goal.attackType !== "string") goal.attackType = "";
+      if (typeof goal.finishType !== "string") goal.finishType = "";
+      if (!Array.isArray(goal.movementTags)) goal.movementTags = [];
+    });
+
     if (!currentGame.shootout || typeof currentGame.shootout !== "object") {
       currentGame.shootout = {
         enabled: false,
@@ -505,6 +512,10 @@
       currentGame.goals.push({
         situation: "",
         reason: "",
+        causePrimary: "",
+        attackType: "",
+        finishType: "",
+        movementTags: [],
         location: "",
         x: null,
         y: null,
@@ -584,6 +595,58 @@
     return labels[row][col];
   }
 
+  const GOAL_CAUSE_CONFIG = {
+    "Rush": {
+      attackTypes: ["일반 러시"],
+      finishes: ["Shot", "Deke", "One-timer"]
+    },
+    "Odd-man Rush": {
+      attackTypes: ["2-on-1", "3-on-2", "3-on-1"],
+      finishes: ["Shot", "East-West", "One-timer", "Backdoor"]
+    },
+    "Breakaway": {
+      attackTypes: ["1-on-0"],
+      finishes: ["Shot", "Deke"]
+    },
+    "Turnover": {
+      attackTypes: ["DZ Turnover", "NZ Turnover", "OZ Turnover"],
+      finishes: ["Shot", "Breakaway", "Odd-man Rush"]
+    },
+    "Zone Play": {
+      attackTypes: ["공격지역 점유"],
+      finishes: ["Point Shot", "Screen", "Tip", "One-timer"]
+    },
+    "In-tight": {
+      attackTypes: ["골문 근거리"],
+      finishes: ["Shot", "Deke", "Jam"]
+    },
+    "Rebound": {
+      attackTypes: ["세컨드 찬스"],
+      finishes: ["Rebound Shot"]
+    },
+    "Scramble": {
+      attackTypes: ["골문 앞 혼전"],
+      finishes: ["Jam", "Loose Puck"]
+    },
+    "Behind Net": {
+      attackTypes: ["골대 뒤 전개"],
+      finishes: ["Wraparound", "Backdoor"]
+    },
+    "Special Teams": {
+      attackTypes: ["PP", "PK"],
+      finishes: ["Shot", "One-timer", "Screen", "Tip"]
+    }
+  };
+
+  const MOVEMENT_TAGS = [
+    "East-West",
+    "Cross-crease",
+    "Backdoor",
+    "Low-to-High",
+    "High-to-Low",
+    "Behind-the-net Pass"
+  ];
+
   function renderGoalAnalysis() {
     if (!currentGame) return;
 
@@ -597,89 +660,154 @@
       return;
     }
 
-    const situations = ["5:5", "PK", "PP", "Empty Net", "6:5", "기타"];
-    const reasons = [
-      "리바운드", "스크린", "브레이크어웨이", "원타이머",
-      "턴오버", "디플렉션", "2대1", "3대2", "러시", "기타"
-    ];
-    const locations = [
-      "좌상단", "좌중단", "좌하단", "중앙상단",
-      "5홀", "중앙하단", "우상단", "우중단", "우하단"
-    ];
+    const primarySituations = Object.keys(GOAL_CAUSE_CONFIG);
     const bodyParts = [
       "글러브", "블로커", "5홀", "패드", "스틱",
       "숄더", "헤드", "몸통", "기타"
     ];
 
-    goalAnalysisList.innerHTML = currentGame.goals.map((goal, index) => `
-      <article class="analysis-item" data-goal-index="${index}">
-        <h4>GA ${index + 1}</h4>
-        <div class="analysis-grid">
-          <label>
-            게임 상황
-            <select data-goal-field="situation">
-              ${selectOptions(situations, goal.situation)}
-            </select>
-          </label>
+    goalAnalysisList.innerHTML = currentGame.goals.map((goal, index) => {
+      const config = GOAL_CAUSE_CONFIG[goal.causePrimary] || {
+        attackTypes: [],
+        finishes: []
+      };
 
-          <label>
-            실점 원인
-            <select data-goal-field="reason">
-              ${selectOptions(reasons, goal.reason)}
-            </select>
-          </label>
+      const legacyText = !goal.causePrimary && (goal.situation || goal.reason)
+        ? `<div class="legacy-goal-note">기존 기록: ${escapeHtml([goal.situation, goal.reason].filter(Boolean).join(" / "))}</div>`
+        : "";
 
-          <div class="wide goal-map-wrap">
-            <div class="goal-map-title">실점 위치 — 골대 안쪽을 터치하세요</div>
-            <div class="goal-map" data-goal-map="${index}">
-              ${goalSvgMarkup()}
-              <div class="goal-touch-layer" data-goal-touch="${index}">
-                ${goal.x != null && goal.y != null ? `
-                  <div class="goal-selected-dot"
-                    style="left:${goal.x}%;top:${goal.y}%"></div>
-                ` : ""}
+      const tags = Array.isArray(goal.movementTags) ? goal.movementTags : [];
+
+      return `
+        <article class="analysis-item" data-goal-index="${index}">
+          <h4>GA ${index + 1}</h4>
+
+          ${legacyText}
+
+          <div class="cause-flow">
+            <label>
+              <span class="cause-step">① 발생상황</span>
+              <select data-goal-field="causePrimary">
+                ${selectOptions(primarySituations, goal.causePrimary)}
+              </select>
+            </label>
+
+            <label>
+              <span class="cause-step">② 공격형태</span>
+              <select data-goal-field="attackType" ${goal.causePrimary ? "" : "disabled"}>
+                ${selectOptions(config.attackTypes, goal.attackType)}
+              </select>
+            </label>
+
+            <label>
+              <span class="cause-step">③ 마무리</span>
+              <select data-goal-field="finishType" ${goal.causePrimary ? "" : "disabled"}>
+                ${selectOptions(config.finishes, goal.finishType)}
+              </select>
+            </label>
+
+            <div class="wide movement-tag-wrap">
+              <div class="cause-step">④ 추가태그 · 패스/골리 이동</div>
+              <div class="movement-tag-grid">
+                ${MOVEMENT_TAGS.map(tag => `
+                  <button
+                    type="button"
+                    class="movement-tag-btn ${tags.includes(tag) ? "selected" : ""}"
+                    data-movement-tag="${escapeHtml(tag)}">
+                    ${escapeHtml(tag)}
+                  </button>
+                `).join("")}
               </div>
-            </div>
-            <div class="goal-zone-label">
-              선택 위치: <span data-goal-location-text="${index}">${escapeHtml(goal.location || "미선택")}</span>
-            </div>
-            <div class="goal-map-actions">
-              <button type="button" class="clear-location-btn" data-clear-goal-location="${index}">
-                위치 지우기
-              </button>
             </div>
           </div>
 
-          <label>
-            실점 부위
-            <select data-goal-field="body">
-              ${selectOptions(bodyParts, goal.body)}
-            </select>
-          </label>
+          <div class="analysis-grid">
+            <div class="wide goal-map-wrap">
+              <div class="goal-map-title">실점 위치 — 골대 안쪽을 터치하세요</div>
+              <div class="goal-map" data-goal-map="${index}">
+                ${goalSvgMarkup()}
+                <div class="goal-touch-layer" data-goal-touch="${index}">
+                  ${goal.x != null && goal.y != null ? `
+                    <div class="goal-selected-dot"
+                      style="left:${goal.x}%;top:${goal.y}%"></div>
+                  ` : ""}
+                </div>
+              </div>
+              <div class="goal-zone-label">
+                선택 위치: <span data-goal-location-text="${index}">${escapeHtml(goal.location || "미선택")}</span>
+              </div>
+              <div class="goal-map-actions">
+                <button type="button" class="clear-location-btn" data-clear-goal-location="${index}">
+                  위치 지우기
+                </button>
+              </div>
+            </div>
 
-          <label class="wide">
-            메모
-            <textarea data-goal-field="memo"
-              placeholder="실점 장면의 특이사항">${escapeHtml(goal.memo)}</textarea>
-          </label>
-        </div>
-      </article>
-    `).join("");
+            <label>
+              실점 부위
+              <select data-goal-field="body">
+                ${selectOptions(bodyParts, goal.body)}
+              </select>
+            </label>
+
+            <label class="wide">
+              메모
+              <textarea data-goal-field="memo"
+                placeholder="실점 장면의 특이사항">${escapeHtml(goal.memo)}</textarea>
+            </label>
+          </div>
+        </article>
+      `;
+    }).join("");
   }
 
-  goalAnalysisList.addEventListener("input", event => {
+  function updateGoalSelectField(event) {
     const item = event.target.closest("[data-goal-index]");
     const field = event.target.dataset.goalField;
     if (!item || !field || !currentGame) return;
 
     const index = Number(item.dataset.goalIndex);
-    currentGame.goals[index][field] = event.target.value;
+    const goal = currentGame.goals[index];
+
+    goal[field] = event.target.value;
+
+    if (field === "causePrimary") {
+      goal.attackType = "";
+      goal.finishType = "";
+      renderGoalAnalysis();
+    }
+
     saveCurrentGame();
-  });
+  }
+
+  goalAnalysisList.addEventListener("input", updateGoalSelectField);
+  goalAnalysisList.addEventListener("change", updateGoalSelectField);
 
 
   goalAnalysisList.addEventListener("click", event => {
     if (!currentGame) return;
+
+    const movementButton = event.target.closest("[data-movement-tag]");
+    if (movementButton) {
+      const item = movementButton.closest("[data-goal-index]");
+      if (!item) return;
+
+      const index = Number(item.dataset.goalIndex);
+      const tag = movementButton.dataset.movementTag;
+      const goal = currentGame.goals[index];
+
+      if (!Array.isArray(goal.movementTags)) goal.movementTags = [];
+
+      if (goal.movementTags.includes(tag)) {
+        goal.movementTags = goal.movementTags.filter(value => value !== tag);
+      } else {
+        goal.movementTags.push(tag);
+      }
+
+      renderGoalAnalysis();
+      saveCurrentGame();
+      return;
+    }
 
     const touchLayer = event.target.closest("[data-goal-touch]");
     if (touchLayer) {
@@ -940,6 +1068,8 @@
 
     let totalSog = 0;
     let totalGa = 0;
+    let opponentTotalSog = 0;
+    let opponentTotalGa = 0;
 
     PERIODS.forEach(period => {
       const values = currentGame.periods[period];
@@ -957,12 +1087,19 @@
 
       totalSog += values.sog;
       totalGa += values.ga;
+      opponentTotalSog += opponentValues.sog;
+      opponentTotalGa += opponentValues.ga;
     });
 
     document.getElementById("totalSog").textContent = totalSog;
     document.getElementById("totalGa").textContent = totalGa;
     document.getElementById("totalSave").textContent =
       saveRateText(totalSog, totalGa);
+
+    document.getElementById("opponentTotalSog").textContent = opponentTotalSog;
+    document.getElementById("opponentTotalGa").textContent = opponentTotalGa;
+    document.getElementById("opponentTotalSave").textContent =
+      saveRateText(opponentTotalSog, opponentTotalGa);
 
     renderGoalAnalysis();
   }
@@ -1202,9 +1339,18 @@
 
     lines.push("");
     lines.push("[경기 합계]");
-    lines.push(`SOG ${totals.sog}`);
-    lines.push(`GA ${totals.ga}`);
-    lines.push(`SAVE ${totals.save}`);
+    lines.push(`우리 골리: SOG ${totals.sog} / GA ${totals.ga} / SAVE ${totals.save}`);
+
+    const opponentTotals = PERIODS.reduce((acc, period) => {
+      const values = game.opponentPeriods?.[period] || { sog: 0, ga: 0 };
+      acc.sog += Number(values.sog || 0);
+      acc.ga += Number(values.ga || 0);
+      return acc;
+    }, { sog: 0, ga: 0 });
+
+    lines.push(
+      `상대 골리: SOG ${opponentTotals.sog} / GA ${opponentTotals.ga} / SAVE ${saveRateText(opponentTotals.sog, opponentTotals.ga)}`
+    );
 
     if ((game.goals || []).length > 0) {
       lines.push("");
@@ -1212,8 +1358,10 @@
 
       game.goals.forEach((goal, index) => {
         const details = [
-          goal.situation,
-          goal.reason,
+          goal.causePrimary || goal.situation,
+          goal.attackType,
+          goal.finishType || goal.reason,
+          ...(Array.isArray(goal.movementTags) ? goal.movementTags : []),
           goal.location,
           goal.body
         ].filter(Boolean).join(" / ");
@@ -1339,7 +1487,14 @@
       ? game.goals.map((goal, index) => `
           <div class="detail-goal">
             <strong>GA ${index + 1}</strong><br>
-            ${escapeHtml([goal.situation, goal.reason, goal.location, goal.body].filter(Boolean).join(" / ") || "상세 미입력")}
+            ${escapeHtml([
+              goal.causePrimary || goal.situation,
+              goal.attackType,
+              goal.finishType || goal.reason,
+              ...(Array.isArray(goal.movementTags) ? goal.movementTags : []),
+              goal.location,
+              goal.body
+            ].filter(Boolean).join(" / ") || "상세 미입력")}
             ${goal.memo ? `<br><small>${escapeHtml(goal.memo)}</small>` : ""}
           </div>
         `).join("")
@@ -1886,7 +2041,29 @@
         ? `총 ${totalShootoutAttempts}명 · 막음 ${totalShootoutSaved} · 실점 ${totalShootoutGoals} · SAVE ${shootoutSave}`
         : "기록 없음";
 
-    renderRankList("reasonStats", countBy(allGoals, "reason"));
+    const primaryCauseCounts = {};
+    const attackTypeCounts = {};
+    const finishTypeCounts = {};
+    const movementTagCounts = {};
+
+    allGoals.forEach(goal => {
+      const primary = goal.causePrimary || goal.reason || "";
+      const attack = goal.attackType || "";
+      const finish = goal.finishType || "";
+
+      if (primary) primaryCauseCounts[primary] = (primaryCauseCounts[primary] || 0) + 1;
+      if (attack) attackTypeCounts[attack] = (attackTypeCounts[attack] || 0) + 1;
+      if (finish) finishTypeCounts[finish] = (finishTypeCounts[finish] || 0) + 1;
+
+      (Array.isArray(goal.movementTags) ? goal.movementTags : []).forEach(tag => {
+        if (tag) movementTagCounts[tag] = (movementTagCounts[tag] || 0) + 1;
+      });
+    });
+
+    renderRankList("reasonStats", primaryCauseCounts);
+    renderRankList("attackTypeStats", attackTypeCounts);
+    renderRankList("finishStats", finishTypeCounts);
+    renderRankList("movementTagStats", movementTagCounts);
     renderRankList("locationStats", countBy(allGoals, "location"));
     renderRankList("bodyStats", countBy(allGoals, "body"));
 
