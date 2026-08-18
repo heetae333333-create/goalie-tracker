@@ -36,6 +36,11 @@
   const editGameInfoPanel = document.getElementById("editGameInfoPanel");
   const editGoalieSelect = document.getElementById("editGoalieSelect");
   const activeGoalieSelect = document.getElementById("activeGoalieSelect");
+  const currentGoalieName = document.getElementById("currentGoalieName");
+  const switchPeriod = document.getElementById("switchPeriod");
+  const switchClock = document.getElementById("switchClock");
+  const applyGoalieSwitch = document.getElementById("applyGoalieSwitch");
+  const goalieStintTimeline = document.getElementById("goalieStintTimeline");
   const gameGoalieSummary = document.getElementById("gameGoalieSummary");
 
   let goalies = readJson(STORAGE_KEYS.goalies, []);
@@ -164,6 +169,18 @@
       game.activeGoalieId = game.goalieRecords[0]?.goalieId || "";
     }
 
+    if (!Array.isArray(game.goalieStints) || game.goalieStints.length === 0) {
+      const firstRecord = game.goalieRecords[0];
+      game.goalieStints = firstRecord ? [{
+        goalieId: firstRecord.goalieId,
+        goalieName: firstRecord.goalieName,
+        startPeriod: "1P",
+        startClock: "20:00",
+        endPeriod: "",
+        endClock: ""
+      }] : [];
+    }
+
     return game.goalieRecords;
   }
 
@@ -272,6 +289,11 @@
     if (currentGame.activeGoalieId) {
       activeGoalieSelect.value = currentGame.activeGoalieId;
     }
+
+    if (currentGoalieName) {
+      const active = getActiveGoalieRecord();
+      currentGoalieName.textContent = active?.goalieName || "-";
+    }
   }
 
   function renderGameGoalieSummary() {
@@ -290,6 +312,72 @@
         </div>
       `;
     }).join("");
+  }
+
+  function normalizeClockText(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    const match = raw.match(/^(\d{1,2}):([0-5]\d)$/);
+    if (!match) return null;
+
+    const minutes = Number(match[1]);
+    const seconds = Number(match[2]);
+
+    if (minutes < 0 || minutes > 20) return null;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function renderGoalieStintTimeline() {
+    if (!currentGame || !goalieStintTimeline) return;
+
+    const stints = Array.isArray(currentGame.goalieStints)
+      ? currentGame.goalieStints
+      : [];
+
+    if (!stints.length) {
+      goalieStintTimeline.innerHTML = "";
+      return;
+    }
+
+    goalieStintTimeline.innerHTML = `
+      <div class="stint-title">교체 타임라인</div>
+      ${stints.map((stint, index) => {
+        const end = stint.endPeriod
+          ? `${stint.endPeriod} ${stint.endClock || ""}`
+          : "현재";
+
+        return `
+          <div class="stint-row ${index === stints.length - 1 && !stint.endPeriod ? "active" : ""}">
+            <strong>${escapeHtml(stint.goalieName || "-")}</strong>
+            <span>${escapeHtml(stint.startPeriod || "-")} ${escapeHtml(stint.startClock || "")} → ${escapeHtml(end)}</span>
+          </div>
+        `;
+      }).join("")}
+    `;
+  }
+
+  function closeCurrentGoalieStint(period, clock) {
+    if (!currentGame || !Array.isArray(currentGame.goalieStints)) return;
+    const openStint = [...currentGame.goalieStints].reverse().find(stint => !stint.endPeriod);
+    if (!openStint) return;
+
+    openStint.endPeriod = period;
+    openStint.endClock = clock;
+  }
+
+  function openGoalieStint(record, period, clock) {
+    if (!currentGame) return;
+    if (!Array.isArray(currentGame.goalieStints)) currentGame.goalieStints = [];
+
+    currentGame.goalieStints.push({
+      goalieId: record.goalieId,
+      goalieName: record.goalieName,
+      startPeriod: period,
+      startClock: clock,
+      endPeriod: "",
+      endClock: ""
+    });
   }
 
   function goalieShootoutTotals(game, record) {
@@ -518,6 +606,16 @@
       goalieRecords: [
         createGoalieRecord(goalie)
       ],
+      goalieStints: [
+        {
+          goalieId: goalie.id,
+          goalieName: goalie.name,
+          startPeriod: "1P",
+          startClock: "20:00",
+          endPeriod: "",
+          endClock: ""
+        }
+      ],
       coachMemo: {
         good: "",
         improve: "",
@@ -654,6 +752,7 @@
     getActiveGoalieRecord();
     refreshActiveGoalieSelect();
     renderGameGoalieSummary();
+    renderGoalieStintTimeline();
 
     document.querySelectorAll(".active-goalie-period-title").forEach(element => {
       element.textContent = `우리 골리 · ${currentGame.goalieName || "-"}`;
@@ -1411,23 +1510,55 @@
     saveCurrentGame();
   });
 
-  activeGoalieSelect.addEventListener("change", () => {
+  switchClock.addEventListener("input", () => {
+    const digits = switchClock.value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length <= 2) {
+      switchClock.value = digits;
+    } else {
+      switchClock.value = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+    }
+  });
+
+  applyGoalieSwitch.addEventListener("click", () => {
     if (!currentGame) return;
 
     const goalieId = activeGoalieSelect.value;
-    const record = ensureGoalieRecord(currentGame, goalieId);
+    const period = switchPeriod.value;
+    const clock = normalizeClockText(switchClock.value);
 
-    if (!record) {
-      showToast("골리를 선택할 수 없습니다.");
+    if (!goalieId) {
+      showToast("교체 골리를 선택하세요.");
       return;
     }
 
+    if (goalieId === currentGame.activeGoalieId) {
+      showToast("현재 출전 중인 골리입니다.");
+      return;
+    }
+
+    if (!clock) {
+      showToast("교체 시각을 MM:SS 형식으로 입력하세요. 예: 08:32");
+      return;
+    }
+
+    const record = ensureGoalieRecord(currentGame, goalieId);
+
+    if (!record) {
+      showToast("교체 골리를 선택할 수 없습니다.");
+      return;
+    }
+
+    closeCurrentGoalieStint(period, clock);
+    openGoalieStint(record, period, clock);
+
     currentGame.activeGoalieId = record.goalieId;
     getActiveGoalieRecord();
+
+    switchClock.value = "";
     renderRecordScreen(false);
     saveCurrentGame();
 
-    showToast(`${record.goalieName} 골리 기록으로 전환했습니다.`);
+    showToast(`${period} ${clock} · ${record.goalieName} 골리로 교체했습니다.`);
   });
 
   function loadDraftIfExists() {
@@ -1622,6 +1753,19 @@
     if (game.tournament) lines.push(`🏆 대회명: ${game.tournament}`);
     lines.push(`📍 구분: ${game.homeAway || "-"}`);
     lines.push(`🥅 출전 골리: ${records.map(record => record.goalieName).join(", ") || "-"}`);
+
+    if (Array.isArray(game.goalieStints) && game.goalieStints.length) {
+      lines.push("");
+      lines.push("[골리 교체 타임라인]");
+      game.goalieStints.forEach(stint => {
+        const end = stint.endPeriod
+          ? `${stint.endPeriod} ${stint.endClock || ""}`
+          : "경기 종료";
+        lines.push(
+          `${stint.goalieName || "-"}: ${stint.startPeriod || "-"} ${stint.startClock || ""} → ${end}`
+        );
+      });
+    }
 
     lines.push("");
     lines.push("[골리별 경기 기록]");
@@ -1923,6 +2067,22 @@
         <p>${escapeHtml(game.date || "-")} · ${escapeHtml(game.homeAway || "-")}</p>
         <p>vs ${escapeHtml(game.opponent || "-")}</p>
         <p>출전 골리: ${escapeHtml(records.map(record => record.goalieName).join(", ") || "-")}</p>
+        ${Array.isArray(game.goalieStints) && game.goalieStints.length ? `
+          <div class="detail-stint-list">
+            ${game.goalieStints.map(stint => `
+              <div>
+                <strong>${escapeHtml(stint.goalieName || "-")}</strong>
+                <span>
+                  ${escapeHtml(stint.startPeriod || "-")} ${escapeHtml(stint.startClock || "")}
+                  →
+                  ${stint.endPeriod
+                    ? `${escapeHtml(stint.endPeriod)} ${escapeHtml(stint.endClock || "")}`
+                    : "경기 종료"}
+                </span>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
         ${game.rink ? `<p>경기장: ${escapeHtml(game.rink)}</p>` : ""}
         ${game.tournament ? `<p>대회명: ${escapeHtml(game.tournament)}</p>` : ""}
       </section>

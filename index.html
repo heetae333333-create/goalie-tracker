@@ -194,8 +194,40 @@
             </div>
           </div>
 
-          <select id="activeGoalieSelect" class="active-goalie-select"></select>
+          <div class="current-goalie-row">
+            <div class="current-goalie-box">
+              <span>현재 골리</span>
+              <strong id="currentGoalieName">-</strong>
+            </div>
+          </div>
 
+          <div class="goalie-change-grid">
+            <label>
+              교체 골리
+              <select id="activeGoalieSelect" class="active-goalie-select"></select>
+            </label>
+
+            <label>
+              교체 피리어드
+              <select id="switchPeriod">
+                <option value="1P">1P</option>
+                <option value="2P">2P</option>
+                <option value="3P">3P</option>
+                <option value="OT">OT</option>
+              </select>
+            </label>
+
+            <label>
+              교체 시각
+              <input id="switchClock" type="text" inputmode="numeric" placeholder="예: 08:32" maxlength="5">
+            </label>
+
+            <button id="applyGoalieSwitch" type="button" class="primary-btn goalie-switch-btn">
+              골리 교체 적용
+            </button>
+          </div>
+
+          <div id="goalieStintTimeline" class="goalie-stint-timeline"></div>
           <div id="gameGoalieSummary" class="game-goalie-summary"></div>
         </section>
 

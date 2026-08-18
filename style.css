@@ -1765,3 +1765,124 @@ button:disabled {
     text-align: left;
   }
 }
+
+
+/* v2.0: 골리 교체 시각 */
+.current-goalie-row {
+  margin-bottom: 10px;
+}
+
+.current-goalie-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #c9d8e6;
+  border-radius: 11px;
+}
+
+.current-goalie-box span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.current-goalie-box strong {
+  color: var(--blue-dark);
+  font-size: 17px;
+}
+
+.goalie-change-grid {
+  display: grid;
+  grid-template-columns: 1.4fr .8fr .9fr auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.goalie-change-grid label {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.goalie-change-grid select,
+.goalie-change-grid input {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 5px;
+}
+
+.goalie-switch-btn {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.goalie-stint-timeline {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.stint-title {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.stint-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  background: rgba(255,255,255,.82);
+  border: 1px solid #cedce8;
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.stint-row.active {
+  border-color: var(--blue);
+}
+
+.stint-row span {
+  color: var(--muted);
+}
+
+.detail-stint-list {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0;
+}
+
+.detail-stint-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  background: #f5f8fb;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .goalie-change-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .goalie-change-grid label:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .goalie-switch-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 430px) {
+  .stint-row,
+  .detail-stint-list > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
