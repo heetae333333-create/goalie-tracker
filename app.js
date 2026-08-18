@@ -35,6 +35,8 @@
   const statsGoalieSelect = document.getElementById("statsGoalieSelect");
   const editGameInfoPanel = document.getElementById("editGameInfoPanel");
   const editGoalieSelect = document.getElementById("editGoalieSelect");
+  const activeGoalieSelect = document.getElementById("activeGoalieSelect");
+  const gameGoalieSummary = document.getElementById("gameGoalieSummary");
 
   let goalies = readJson(STORAGE_KEYS.goalies, []);
   let savedGames = readJson(STORAGE_KEYS.games, []);
@@ -105,6 +107,211 @@
     if (sog <= 0) return "—";
     const saves = Math.max(0, sog - ga);
     return `${((saves / sog) * 100).toFixed(1)}%`;
+  }
+
+  function deepClone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function createGoalieRecord(goalie) {
+    return {
+      goalieId: goalie?.id || "",
+      goalieName: goalie?.name || "미지정 골리",
+      periods: createEmptyPeriods(),
+      goals: []
+    };
+  }
+
+  function normalizeGoalieRecords(game) {
+    if (!game || typeof game !== "object") return [];
+
+    if (!Array.isArray(game.goalieRecords) || game.goalieRecords.length === 0) {
+      const legacyRecord = {
+        goalieId: game.goalieId || "",
+        goalieName: game.goalieName || "미지정 골리",
+        periods: deepClone(game.periods || createEmptyPeriods()),
+        goals: deepClone(Array.isArray(game.goals) ? game.goals : [])
+      };
+
+      legacyRecord.goals.forEach(goal => {
+        if (!goal.goalieId) goal.goalieId = legacyRecord.goalieId;
+        if (!goal.goalieName) goal.goalieName = legacyRecord.goalieName;
+      });
+
+      game.goalieRecords = [legacyRecord];
+    }
+
+    game.goalieRecords.forEach(record => {
+      if (!record.periods || typeof record.periods !== "object") {
+        record.periods = createEmptyPeriods();
+      }
+
+      PERIODS.forEach(period => {
+        if (!record.periods[period]) {
+          record.periods[period] = { sog: 0, ga: 0 };
+        }
+      });
+
+      if (!Array.isArray(record.goals)) record.goals = [];
+
+      record.goals.forEach(goal => {
+        if (!goal.goalieId) goal.goalieId = record.goalieId;
+        if (!goal.goalieName) goal.goalieName = record.goalieName;
+      });
+    });
+
+    if (!game.activeGoalieId) {
+      game.activeGoalieId = game.goalieRecords[0]?.goalieId || "";
+    }
+
+    return game.goalieRecords;
+  }
+
+  function getGoalieRecords(game) {
+    return normalizeGoalieRecords(game);
+  }
+
+  function findGoalieRecord(game, goalieId) {
+    return getGoalieRecords(game).find(record => record.goalieId === goalieId) || null;
+  }
+
+  function ensureGoalieRecord(game, goalieId) {
+    let record = findGoalieRecord(game, goalieId);
+    if (record) return record;
+
+    const goalie = goalies.find(item => item.id === goalieId);
+    if (!goalie) return null;
+
+    record = createGoalieRecord(goalie);
+    game.goalieRecords.push(record);
+    return record;
+  }
+
+  function getActiveGoalieRecord() {
+    if (!currentGame) return null;
+
+    const records = getGoalieRecords(currentGame);
+    let record = records.find(item => item.goalieId === currentGame.activeGoalieId);
+
+    if (!record) {
+      record = records[0] || null;
+      if (record) currentGame.activeGoalieId = record.goalieId;
+    }
+
+    if (record) {
+      // 기존 함수들이 최대한 그대로 작동하도록 현재 골리 데이터를 기존 필드에 연결합니다.
+      currentGame.goalieId = record.goalieId;
+      currentGame.goalieName = record.goalieName;
+      currentGame.periods = record.periods;
+      currentGame.goals = record.goals;
+    }
+
+    return record;
+  }
+
+  function goalieRecordTotals(record) {
+    let sog = 0;
+    let ga = 0;
+
+    PERIODS.forEach(period => {
+      sog += Number(record?.periods?.[period]?.sog || 0);
+      ga += Number(record?.periods?.[period]?.ga || 0);
+    });
+
+    return {
+      sog,
+      ga,
+      save: saveRateText(sog, ga)
+    };
+  }
+
+  function teamGoalieTotals(game) {
+    let sog = 0;
+    let ga = 0;
+
+    getGoalieRecords(game).forEach(record => {
+      const totals = goalieRecordTotals(record);
+      sog += totals.sog;
+      ga += totals.ga;
+    });
+
+    return {
+      sog,
+      ga,
+      save: saveRateText(sog, ga)
+    };
+  }
+
+  function gameGoalieNames(game) {
+    return getGoalieRecords(game)
+      .map(record => record.goalieName)
+      .filter(Boolean);
+  }
+
+  function allGameGoals(game) {
+    return getGoalieRecords(game).flatMap(record =>
+      (record.goals || []).map(goal => ({
+        ...goal,
+        goalieId: goal.goalieId || record.goalieId,
+        goalieName: goal.goalieName || record.goalieName
+      }))
+    );
+  }
+
+  function refreshActiveGoalieSelect() {
+    if (!currentGame || !activeGoalieSelect) return;
+
+    getActiveGoalieRecord();
+
+    activeGoalieSelect.innerHTML = goalies.map(goalie => `
+      <option value="${escapeHtml(goalie.id)}">
+        ${escapeHtml(goalie.name)}${goalie.number ? ` (#${escapeHtml(goalie.number)})` : ""}
+      </option>
+    `).join("");
+
+    if (currentGame.activeGoalieId) {
+      activeGoalieSelect.value = currentGame.activeGoalieId;
+    }
+  }
+
+  function renderGameGoalieSummary() {
+    if (!currentGame || !gameGoalieSummary) return;
+
+    const records = getGoalieRecords(currentGame);
+
+    gameGoalieSummary.innerHTML = records.map(record => {
+      const totals = goalieRecordTotals(record);
+      const active = record.goalieId === currentGame.activeGoalieId;
+
+      return `
+        <div class="game-goalie-chip ${active ? "active" : ""}">
+          <strong>${escapeHtml(record.goalieName)}</strong>
+          <span>SOG ${totals.sog} · GA ${totals.ga} · ${totals.save}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function goalieShootoutTotals(game, record) {
+    const attempts = game?.shootout?.attempts || [];
+    const records = getGoalieRecords(game);
+
+    const filtered = attempts.filter(attempt => {
+      if (attempt.goalieId) return attempt.goalieId === record.goalieId;
+      // 예전 슛아웃 데이터는 골리가 한 명뿐인 경기라면 그 골리에게 귀속합니다.
+      return records.length === 1 && record.goalieId === records[0].goalieId;
+    });
+
+    const saved = filtered.filter(item => item.result === "saved").length;
+    const goals = filtered.filter(item => item.result === "goal").length;
+    const decided = saved + goals;
+
+    return {
+      count: filtered.length,
+      saved,
+      goals,
+      save: decided > 0 ? `${((saved / decided) * 100).toFixed(1)}%` : "—"
+    };
   }
 
   // ─────────────────────────────
@@ -307,6 +514,15 @@
       homeAway: document.getElementById("homeAway").value,
       goalieId: goalie.id,
       goalieName: goalie.name,
+      activeGoalieId: goalie.id,
+      goalieRecords: [
+        createGoalieRecord(goalie)
+      ],
+      coachMemo: {
+        good: "",
+        improve: "",
+        next: ""
+      },
       periods: createEmptyPeriods(),
       opponentPeriods: createEmptyPeriods(),
       goals: [],
@@ -341,7 +557,7 @@
 
         <div class="goalie-compare-grid">
           <section class="goalie-side our-goalie-side">
-            <div class="goalie-side-title">우리 골리</div>
+            <div class="goalie-side-title active-goalie-period-title">우리 골리</div>
 
             <div class="period-body">
               <div class="counter-block">
@@ -411,8 +627,10 @@
   function renderRecordScreen(fromDraft = false) {
     if (!currentGame) return;
 
+    getActiveGoalieRecord();
+
     document.getElementById("recordTitle").textContent =
-      `🏒 ${currentGame.goalieName} vs ${currentGame.opponent}`;
+      `🏒 vs ${currentGame.opponent}`;
 
     const details = [
       currentGame.date,
@@ -433,6 +651,21 @@
     }
 
     ensureGameExtras();
+    getActiveGoalieRecord();
+    refreshActiveGoalieSelect();
+    renderGameGoalieSummary();
+
+    document.querySelectorAll(".active-goalie-period-title").forEach(element => {
+      element.textContent = `우리 골리 · ${currentGame.goalieName || "-"}`;
+    });
+
+    document.getElementById("activeGoalieTotalTitle").textContent =
+      `${currentGame.goalieName || "우리 골리"} TOTAL`;
+
+    document.getElementById("coachGood").value = currentGame.coachMemo.good || "";
+    document.getElementById("coachImprove").value = currentGame.coachMemo.improve || "";
+    document.getElementById("coachNext").value = currentGame.coachMemo.next || "";
+
     shootoutEnabled.value = currentGame.shootout.enabled ? "yes" : "no";
     shootoutSettings.classList.toggle("hidden", !currentGame.shootout.enabled);
 
@@ -457,6 +690,16 @@
 
   function ensureGameExtras() {
     if (!currentGame) return;
+
+    normalizeGoalieRecords(currentGame);
+    getActiveGoalieRecord();
+
+    if (!currentGame.coachMemo || typeof currentGame.coachMemo !== "object") {
+      currentGame.coachMemo = { good: "", improve: "", next: "" };
+    }
+    if (typeof currentGame.coachMemo.good !== "string") currentGame.coachMemo.good = "";
+    if (typeof currentGame.coachMemo.improve !== "string") currentGame.coachMemo.improve = "";
+    if (typeof currentGame.coachMemo.next !== "string") currentGame.coachMemo.next = "";
 
     if (!Array.isArray(currentGame.goals)) {
       currentGame.goals = [];
@@ -499,8 +742,11 @@
 
   function totalGoalsAgainst() {
     if (!currentGame) return 0;
+    const record = getActiveGoalieRecord();
+    if (!record) return 0;
+
     return PERIODS.reduce((sum, period) => {
-      return sum + Number(currentGame.periods[period].ga || 0);
+      return sum + Number(record.periods?.[period]?.ga || 0);
     }, 0);
   }
 
@@ -520,7 +766,9 @@
         x: null,
         y: null,
         body: "",
-        memo: ""
+        memo: "",
+        goalieId: currentGame.activeGoalieId || currentGame.goalieId || "",
+        goalieName: currentGame.goalieName || ""
       });
     }
 
@@ -927,7 +1175,7 @@
       : "—";
 
     shootoutSummary.innerHTML = `
-      <div><strong>우리 골리</strong> · 막음 ${ourSaved} · 실점 ${ourGoals} · SAVE% ${ourRate}</div>
+      <div><strong>우리팀 골리</strong> · 막음 ${ourSaved} · 실점 ${ourGoals} · SAVE% ${ourRate}</div>
       <div><strong>상대 골리</strong> · 막음 ${oppSaved} · 실점 ${oppGoals} · SAVE% ${oppRate}</div>
     `;
 
@@ -1038,6 +1286,10 @@
     if (ourResultButton) {
       currentGame.shootout.attempts[index].result =
         ourResultButton.dataset.shootoutResult;
+      currentGame.shootout.attempts[index].goalieId =
+        currentGame.activeGoalieId || currentGame.goalieId || "";
+      currentGame.shootout.attempts[index].goalieName =
+        currentGame.goalieName || "";
       renderShootout();
       saveCurrentGame();
       return;
@@ -1066,13 +1318,16 @@
     if (!currentGame) return;
     ensureGameExtras();
 
+    const activeRecord = getActiveGoalieRecord();
+    if (!activeRecord) return;
+
     let totalSog = 0;
     let totalGa = 0;
     let opponentTotalSog = 0;
     let opponentTotalGa = 0;
 
     PERIODS.forEach(period => {
-      const values = currentGame.periods[period];
+      const values = activeRecord.periods[period];
       const opponentValues = currentGame.opponentPeriods[period];
 
       document.getElementById(`${period}_sog`).textContent = values.sog;
@@ -1085,10 +1340,10 @@
       document.getElementById(`${period}_opp_save`).textContent =
         saveRateText(opponentValues.sog, opponentValues.ga);
 
-      totalSog += values.sog;
-      totalGa += values.ga;
-      opponentTotalSog += opponentValues.sog;
-      opponentTotalGa += opponentValues.ga;
+      totalSog += Number(values.sog || 0);
+      totalGa += Number(values.ga || 0);
+      opponentTotalSog += Number(opponentValues.sog || 0);
+      opponentTotalGa += Number(opponentValues.ga || 0);
     });
 
     document.getElementById("totalSog").textContent = totalSog;
@@ -1096,11 +1351,24 @@
     document.getElementById("totalSave").textContent =
       saveRateText(totalSog, totalGa);
 
+    const teamTotals = teamGoalieTotals(currentGame);
+    document.getElementById("teamTotalSog").textContent = teamTotals.sog;
+    document.getElementById("teamTotalGa").textContent = teamTotals.ga;
+    document.getElementById("teamTotalSave").textContent = teamTotals.save;
+
     document.getElementById("opponentTotalSog").textContent = opponentTotalSog;
     document.getElementById("opponentTotalGa").textContent = opponentTotalGa;
     document.getElementById("opponentTotalSave").textContent =
       saveRateText(opponentTotalSog, opponentTotalGa);
 
+    document.querySelectorAll(".active-goalie-period-title").forEach(element => {
+      element.textContent = `우리 골리 · ${activeRecord.goalieName || "-"}`;
+    });
+
+    document.getElementById("activeGoalieTotalTitle").textContent =
+      `${activeRecord.goalieName || "우리 골리"} TOTAL`;
+
+    renderGameGoalieSummary();
     renderGoalAnalysis();
   }
 
@@ -1115,26 +1383,51 @@
     const field = button.dataset.field;
     const delta = Number(button.dataset.delta);
 
+    const activeRecord = getActiveGoalieRecord();
+    if (!activeRecord) return;
+
     const values = side === "opponent"
       ? currentGame.opponentPeriods[period]
-      : currentGame.periods[period];
+      : activeRecord.periods[period];
 
-    let next = values[field] + delta;
+    let next = Number(values[field] || 0) + delta;
     next = Math.max(0, next);
 
-    if (field === "ga" && next > values.sog) {
-      showToast("실점은 해당 피리어드 슈팅 수보다 클 수 없습니다.");
+    if (field === "ga" && next > Number(values.sog || 0)) {
+      showToast("실점은 해당 골리의 슈팅 수보다 클 수 없습니다.");
       return;
     }
 
-    if (field === "sog" && next < values.ga) {
-      showToast("슈팅 수는 해당 피리어드 실점보다 작을 수 없습니다.");
+    if (field === "sog" && next < Number(values.ga || 0)) {
+      showToast("슈팅 수는 해당 골리의 실점보다 작을 수 없습니다.");
       return;
     }
 
     values[field] = next;
+
+    // 실점 분석은 현재 골리 기록에 맞춰 자동 생성됩니다.
+    getActiveGoalieRecord();
     updateRecordNumbers();
     saveCurrentGame();
+  });
+
+  activeGoalieSelect.addEventListener("change", () => {
+    if (!currentGame) return;
+
+    const goalieId = activeGoalieSelect.value;
+    const record = ensureGoalieRecord(currentGame, goalieId);
+
+    if (!record) {
+      showToast("골리를 선택할 수 없습니다.");
+      return;
+    }
+
+    currentGame.activeGoalieId = record.goalieId;
+    getActiveGoalieRecord();
+    renderRecordScreen(false);
+    saveCurrentGame();
+
+    showToast(`${record.goalieName} 골리 기록으로 전환했습니다.`);
   });
 
   function loadDraftIfExists() {
@@ -1169,6 +1462,7 @@
     if (editingSavedGameId) {
       syncEditedGameInfo();
 
+      getActiveGoalieRecord();
       const updated = JSON.parse(JSON.stringify(currentGame));
       updated.id = editingSavedGameId;
       updated.status = "completed";
@@ -1197,6 +1491,7 @@
       return;
     }
 
+    getActiveGoalieRecord();
     const completed = JSON.parse(JSON.stringify(currentGame));
     completed.status = "completed";
     completed.completedAt = new Date().toISOString();
@@ -1249,6 +1544,22 @@
 
 
 
+  ["coachGood", "coachImprove", "coachNext"].forEach(id => {
+    document.getElementById(id).addEventListener("input", event => {
+      if (!currentGame) return;
+      ensureGameExtras();
+
+      const map = {
+        coachGood: "good",
+        coachImprove: "improve",
+        coachNext: "next"
+      };
+
+      currentGame.coachMemo[map[id]] = event.target.value;
+      saveCurrentGame();
+    });
+  });
+
   [
     "editGameDate",
     "editOpponentTeam",
@@ -1277,19 +1588,7 @@
   // ─────────────────────────────
 
   function gameTotals(game) {
-    let sog = 0;
-    let ga = 0;
-
-    PERIODS.forEach(period => {
-      sog += Number(game.periods?.[period]?.sog || 0);
-      ga += Number(game.periods?.[period]?.ga || 0);
-    });
-
-    return {
-      sog,
-      ga,
-      save: saveRateText(sog, ga)
-    };
+    return teamGoalieTotals(game);
   }
 
   function shootoutTotals(game) {
@@ -1312,34 +1611,41 @@
 
   function buildShareText(game) {
     const totals = gameTotals(game);
+    const records = getGoalieRecords(game);
     const lines = [];
 
-    lines.push("🏒 골리 경기 기록");
+    lines.push("🏒 경기 골리 기록");
     lines.push("");
     lines.push(`📅 경기일: ${game.date || "-"}`);
-    lines.push(`🥅 골리: ${game.goalieName || "-"}`);
     lines.push(`🆚 상대팀: ${game.opponent || "-"}`);
     if (game.rink) lines.push(`🏟 경기장: ${game.rink}`);
     if (game.tournament) lines.push(`🏆 대회명: ${game.tournament}`);
     lines.push(`📍 구분: ${game.homeAway || "-"}`);
+    lines.push(`🥅 출전 골리: ${records.map(record => record.goalieName).join(", ") || "-"}`);
+
     lines.push("");
-    lines.push("[피리어드별 기록]");
+    lines.push("[골리별 경기 기록]");
 
-    PERIODS.forEach(period => {
-      const values = game.periods?.[period] || { sog: 0, ga: 0 };
-      const opponentValues = game.opponentPeriods?.[period] || { sog: 0, ga: 0 };
-
+    records.forEach(record => {
+      const recordTotals = goalieRecordTotals(record);
+      lines.push("");
+      lines.push(`▶ ${record.goalieName}`);
+      PERIODS.forEach(period => {
+        const values = record.periods?.[period] || { sog: 0, ga: 0 };
+        if (Number(values.sog || 0) > 0 || Number(values.ga || 0) > 0) {
+          lines.push(
+            `${period}: SOG ${values.sog} / GA ${values.ga} / SAVE ${saveRateText(values.sog, values.ga)}`
+          );
+        }
+      });
       lines.push(
-        `${period} 우리 골리: SOG ${values.sog} / GA ${values.ga} / SAVE ${saveRateText(values.sog, values.ga)}`
-      );
-      lines.push(
-        `${period} 상대 골리: SOG ${opponentValues.sog} / GA ${opponentValues.ga} / SAVE ${saveRateText(opponentValues.sog, opponentValues.ga)}`
+        `TOTAL: SOG ${recordTotals.sog} / GA ${recordTotals.ga} / SAVE ${recordTotals.save}`
       );
     });
 
     lines.push("");
-    lines.push("[경기 합계]");
-    lines.push(`우리 골리: SOG ${totals.sog} / GA ${totals.ga} / SAVE ${totals.save}`);
+    lines.push("[우리팀 골리 합계]");
+    lines.push(`SOG ${totals.sog} / GA ${totals.ga} / SAVE ${totals.save}`);
 
     const opponentTotals = PERIODS.reduce((acc, period) => {
       const values = game.opponentPeriods?.[period] || { sog: 0, ga: 0 };
@@ -1352,11 +1658,12 @@
       `상대 골리: SOG ${opponentTotals.sog} / GA ${opponentTotals.ga} / SAVE ${saveRateText(opponentTotals.sog, opponentTotals.ga)}`
     );
 
-    if ((game.goals || []).length > 0) {
+    const goals = allGameGoals(game);
+    if (goals.length > 0) {
       lines.push("");
       lines.push("[실점 분석]");
 
-      game.goals.forEach((goal, index) => {
+      goals.forEach((goal, index) => {
         const details = [
           goal.causePrimary || goal.situation,
           goal.attackType,
@@ -1366,17 +1673,23 @@
           goal.body
         ].filter(Boolean).join(" / ");
 
-        lines.push(`GA${index + 1}: ${details || "상세 미입력"}`);
+        lines.push(`GA${index + 1} · ${goal.goalieName || "-"}: ${details || "상세 미입력"}`);
         if (goal.memo) lines.push(`  메모: ${goal.memo}`);
       });
     }
 
     if (game.shootout?.enabled) {
-      const so = shootoutTotals(game);
       lines.push("");
-      lines.push("[슛아웃]");
-      lines.push(`우리 골리: 총 ${so.count}명 / 막음 ${so.saved} / 실점 ${so.goals}`);
-      lines.push(`우리 골리 슛아웃 SAVE ${so.save}`);
+      lines.push("[슛아웃 골리별 기록]");
+
+      records.forEach(record => {
+        const so = goalieShootoutTotals(game, record);
+        if (so.count > 0) {
+          lines.push(
+            `${record.goalieName}: 총 ${so.count} / 막음 ${so.saved} / 실점 ${so.goals} / SAVE ${so.save}`
+          );
+        }
+      });
 
       const opponentAttempts = game.shootout?.opponentAttempts || [];
       const opponentSaved = opponentAttempts.filter(item => item.result === "saved").length;
@@ -1386,8 +1699,16 @@
         ? ((opponentSaved / opponentDecided) * 100).toFixed(1) + "%"
         : "—";
 
-      lines.push(`상대 골리: 막음 ${opponentSaved} / 실점 ${opponentGoals}`);
-      lines.push(`상대 골리 슛아웃 SAVE ${opponentSave}`);
+      lines.push(`상대 골리: 막음 ${opponentSaved} / 실점 ${opponentGoals} / SAVE ${opponentSave}`);
+    }
+
+    const memo = game.coachMemo || {};
+    if (memo.good || memo.improve || memo.next) {
+      lines.push("");
+      lines.push("[코치 메모]");
+      if (memo.good) lines.push(`잘한 점: ${memo.good}`);
+      if (memo.improve) lines.push(`개선할 점: ${memo.improve}`);
+      if (memo.next) lines.push(`다음 훈련: ${memo.next}`);
     }
 
     return lines.join("\n");
@@ -1422,7 +1743,7 @@
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${game.date || "game"}_${game.goalieName || "goalie"}_vs_${game.opponent || "opponent"}.txt`;
+    anchor.download = `${game.date || "game"}_vs_${game.opponent || "opponent"}_goalies.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -1442,14 +1763,21 @@
 
     document.getElementById("gamesList").innerHTML = sorted.map(game => {
       const totals = gameTotals(game);
+      const records = getGoalieRecords(game);
+
+      const goalieSummary = records.map(record => {
+        const rt = goalieRecordTotals(record);
+        return `${escapeHtml(record.goalieName)} ${rt.save} (${rt.sog}/${rt.ga})`;
+      }).join(" · ");
 
       return `
         <article class="game-list-card">
-          <h3>${escapeHtml(game.date || "-")} · ${escapeHtml(game.goalieName || "-")}</h3>
-          <p class="game-list-meta">vs ${escapeHtml(game.opponent || "-")}</p>
+          <h3>${escapeHtml(game.date || "-")} · vs ${escapeHtml(game.opponent || "-")}</h3>
+          <p class="game-list-meta">${escapeHtml(game.tournament || game.rink || game.homeAway || "")}</p>
           <p class="game-list-meta">
-            SOG ${totals.sog} · GA ${totals.ga} · SAVE ${totals.save}
+            우리팀 골리 합계 · SOG ${totals.sog} · GA ${totals.ga} · SAVE ${totals.save}
           </p>
+          <p class="game-list-goalies">🥅 ${goalieSummary || "골리 기록 없음"}</p>
 
           <div class="game-list-actions">
             <button type="button" class="small-action-btn open" data-open-game="${escapeHtml(game.id)}">
@@ -1466,45 +1794,125 @@
 
   function renderGameDetail(game) {
     const totals = gameTotals(game);
-    const so = shootoutTotals(game);
+    const records = getGoalieRecords(game);
+
+    const opponentTotals = PERIODS.reduce((acc, period) => {
+      const values = game.opponentPeriods?.[period] || { sog: 0, ga: 0 };
+      acc.sog += Number(values.sog || 0);
+      acc.ga += Number(values.ga || 0);
+      return acc;
+    }, { sog: 0, ga: 0 });
+    opponentTotals.save = saveRateText(opponentTotals.sog, opponentTotals.ga);
 
     document.getElementById("detailSubtitle").textContent =
-      `${game.goalieName || "-"} vs ${game.opponent || "-"}`;
+      `${game.date || "-"} · vs ${game.opponent || "-"}`;
 
-    const periodRows = PERIODS.map(period => {
-      const values = game.periods?.[period] || { sog: 0, ga: 0 };
+    const goalieCards = records.map(record => {
+      const rt = goalieRecordTotals(record);
+
+      const rows = PERIODS.map(period => {
+        const values = record.periods?.[period] || { sog: 0, ga: 0 };
+        return `
+          <tr>
+            <td>${period}</td>
+            <td>${values.sog}</td>
+            <td>${values.ga}</td>
+            <td>${saveRateText(values.sog, values.ga)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      const goals = record.goals || [];
+      const goalBlock = goals.length
+        ? `
+          <div class="detail-goalie-goals">
+            ${goals.map((goal, index) => `
+              <div class="detail-goal">
+                <strong>GA ${index + 1}</strong><br>
+                ${escapeHtml([
+                  goal.causePrimary || goal.situation,
+                  goal.attackType,
+                  goal.finishType || goal.reason,
+                  ...(Array.isArray(goal.movementTags) ? goal.movementTags : []),
+                  goal.location,
+                  goal.body
+                ].filter(Boolean).join(" / ") || "상세 미입력")}
+                ${goal.memo ? `<br><small>${escapeHtml(goal.memo)}</small>` : ""}
+              </div>
+            `).join("")}
+          </div>
+        `
+        : "";
+
       return `
-        <tr>
-          <td>${period}</td>
-          <td>${values.sog}</td>
-          <td>${values.ga}</td>
-          <td>${saveRateText(values.sog, values.ga)}</td>
-        </tr>
+        <section class="detail-card goalie-appearance-card">
+          <div class="appearance-head">
+            <div>
+              <h3>🥅 ${escapeHtml(record.goalieName)}</h3>
+              <small>이 경기 개인 기록</small>
+            </div>
+            <div class="appearance-save">
+              <strong>${rt.save}</strong>
+              <span>SOG ${rt.sog} · GA ${rt.ga}</span>
+            </div>
+          </div>
+
+          <table class="detail-table goalie-period-table">
+            <thead>
+              <tr><th>구간</th><th>SOG</th><th>GA</th><th>SV%</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          ${goalBlock}
+        </section>
       `;
     }).join("");
 
-    const goalRows = (game.goals || []).length
-      ? game.goals.map((goal, index) => `
-          <div class="detail-goal">
-            <strong>GA ${index + 1}</strong><br>
-            ${escapeHtml([
-              goal.causePrimary || goal.situation,
-              goal.attackType,
-              goal.finishType || goal.reason,
-              ...(Array.isArray(goal.movementTags) ? goal.movementTags : []),
-              goal.location,
-              goal.body
-            ].filter(Boolean).join(" / ") || "상세 미입력")}
-            ${goal.memo ? `<br><small>${escapeHtml(goal.memo)}</small>` : ""}
-          </div>
-        `).join("")
-      : `<div class="empty-analysis">실점 기록 없음</div>`;
+    const opponentAttempts = game.shootout?.opponentAttempts || [];
+    const opponentSaved = opponentAttempts.filter(item => item.result === "saved").length;
+    const opponentGoals = opponentAttempts.filter(item => item.result === "goal").length;
+    const opponentDecided = opponentSaved + opponentGoals;
+    const opponentShootoutSave = opponentDecided > 0
+      ? `${((opponentSaved / opponentDecided) * 100).toFixed(1)}%`
+      : "—";
+
+    const goalieShootoutRows = records.map(record => {
+      const so = goalieShootoutTotals(game, record);
+      if (!so.count) return "";
+      return `
+        <div class="shootout-goalie-row">
+          <strong>${escapeHtml(record.goalieName)}</strong>
+          <span>총 ${so.count} · 막음 ${so.saved} · 실점 ${so.goals} · ${so.save}</span>
+        </div>
+      `;
+    }).filter(Boolean).join("");
 
     const shootoutBlock = game.shootout?.enabled
       ? `
         <section class="detail-card">
-          <h3>🎯 슛아웃</h3>
-          <p>총 ${so.count}명 · 막음 ${so.saved} · 실점 ${so.goals} · SAVE ${so.save}</p>
+          <h3>🎯 슛아웃 비교</h3>
+          <div class="shootout-goalie-breakdown">
+            ${goalieShootoutRows || `<div class="empty-analysis">우리팀 골리 슛아웃 결과 없음</div>`}
+            <div class="shootout-goalie-row opponent">
+              <strong>상대 골리</strong>
+              <span>막음 ${opponentSaved} · 실점 ${opponentGoals} · ${opponentShootoutSave}</span>
+            </div>
+          </div>
+        </section>
+      `
+      : "";
+
+    const memo = game.coachMemo || {};
+    const coachMemoBlock = (memo.good || memo.improve || memo.next)
+      ? `
+        <section class="detail-card">
+          <h3>📝 코치 메모</h3>
+          <div class="coach-detail-grid">
+            <div><span>잘한 점</span><p>${escapeHtml(memo.good || "—")}</p></div>
+            <div><span>개선할 점</span><p>${escapeHtml(memo.improve || "—")}</p></div>
+            <div><span>다음 훈련</span><p>${escapeHtml(memo.next || "—")}</p></div>
+          </div>
         </section>
       `
       : "";
@@ -1513,32 +1921,35 @@
       <section class="detail-card">
         <h3>경기 정보</h3>
         <p>${escapeHtml(game.date || "-")} · ${escapeHtml(game.homeAway || "-")}</p>
-        <p>${escapeHtml(game.goalieName || "-")} vs ${escapeHtml(game.opponent || "-")}</p>
+        <p>vs ${escapeHtml(game.opponent || "-")}</p>
+        <p>출전 골리: ${escapeHtml(records.map(record => record.goalieName).join(", ") || "-")}</p>
         ${game.rink ? `<p>경기장: ${escapeHtml(game.rink)}</p>` : ""}
         ${game.tournament ? `<p>대회명: ${escapeHtml(game.tournament)}</p>` : ""}
       </section>
 
-      <section class="detail-card">
-        <h3>경기 합계</h3>
-        <div class="detail-grid">
-          <div class="detail-stat"><span>SOG</span><strong>${totals.sog}</strong></div>
-          <div class="detail-stat"><span>GA</span><strong>${totals.ga}</strong></div>
-          <div class="detail-stat"><span>SAVE%</span><strong>${totals.save}</strong></div>
+      <section class="detail-card goalie-comparison-card">
+        <h3>⚔️ 경기 전체 골리 비교</h3>
+        <div class="goalie-comparison-summary">
+          <div class="our-comparison">
+            <span>우리팀 골리 합계</span>
+            <strong>${totals.save}</strong>
+            <small>SOG ${totals.sog} · GA ${totals.ga}</small>
+          </div>
+          <div class="opponent-comparison">
+            <span>상대 골리</span>
+            <strong>${opponentTotals.save}</strong>
+            <small>SOG ${opponentTotals.sog} · GA ${opponentTotals.ga}</small>
+          </div>
         </div>
-
-        <table class="detail-table">
-          <thead>
-            <tr><th>구간</th><th>SOG</th><th>GA</th><th>SAVE%</th></tr>
-          </thead>
-          <tbody>${periodRows}</tbody>
-        </table>
       </section>
 
       <section class="detail-card">
-        <h3>🥅 실점 분석</h3>
-        ${goalRows}
+        <h3>🥅 출전 골리별 기록</h3>
+        <p class="detail-helper">교체 출전한 골리의 세이브 기록을 각각 확인할 수 있습니다.</p>
       </section>
 
+      ${goalieCards}
+      ${coachMemoBlock}
       ${shootoutBlock}
     `;
   }
@@ -1753,7 +2164,7 @@
   function buildBackupData() {
     return {
       app: "Goalie Tracker Pro",
-      version: "0.9",
+      version: "1.9",
       exportedAt: new Date().toISOString(),
       data: {
         goalies: goalies,
@@ -1911,8 +2322,10 @@
   // ─────────────────────────────
 
   function refreshStatsGoalieSelect() {
-    const goalieNames = [...new Set(savedGames.map(game => game.goalieName).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, "ko"));
+    const goalieNames = [...new Set(
+      savedGames.flatMap(game => getGoalieRecords(game).map(record => record.goalieName))
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, "ko"));
 
     statsGoalieSelect.innerHTML = `
       <option value="all">전체 골리</option>
@@ -1956,6 +2369,80 @@
     `).join("");
   }
 
+  function topEntries(counts, limit = 3) {
+    return Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, limit);
+  }
+
+  function weaknessTip(primary, attack, finish, tag) {
+    const text = [primary, attack, finish, tag].filter(Boolean).join(" ");
+
+    if (/East-West|Cross-crease|Backdoor/.test(text)) {
+      return "좌우 패스의 선행 읽기, 푸시 타이밍, 반대 포스트 세팅 훈련을 우선 추천합니다.";
+    }
+    if (/Rebound|Scramble|Jam|Loose Puck/.test(text)) {
+      return "리바운드 방향 제어와 세컨드 세이브 후 복구 동작을 우선 점검해보세요.";
+    }
+    if (/Breakaway|Deke|1-on-0/.test(text)) {
+      return "브레이크어웨이에서 깊이 조절과 인내, 슈터의 손·스틱 읽기 훈련을 추천합니다.";
+    }
+    if (/Odd-man Rush|2-on-1|3-on-2|3-on-1/.test(text)) {
+      return "Odd-man Rush에서 패스 옵션과 슈터 옵션을 구분하는 읽기 훈련이 효과적입니다.";
+    }
+    if (/Screen|Tip|Point Shot/.test(text)) {
+      return "스크린 상황의 시야 확보와 팁 대비 깊이 조절을 집중적으로 점검해보세요.";
+    }
+    if (/Turnover/.test(text)) {
+      return "턴오버 직후 빠른 세팅과 위험 옵션 우선순위 읽기 훈련을 추천합니다.";
+    }
+    return "가장 많이 반복되는 상위 실점 패턴을 다음 훈련의 첫 번째 테마로 잡는 것을 추천합니다.";
+  }
+
+  function renderWeaknessSummary(primaryCounts, attackCounts, finishCounts, tagCounts, totalGoals) {
+    const el = document.getElementById("weaknessSummary");
+    if (!el) return;
+
+    if (!totalGoals) {
+      el.innerHTML = `<div class="empty-analysis">실점 기록이 쌓이면 자동으로 약점 패턴을 요약합니다.</div>`;
+      return;
+    }
+
+    const primary = topEntries(primaryCounts, 3);
+    const attack = topEntries(attackCounts, 2);
+    const finish = topEntries(finishCounts, 2);
+    const tags = topEntries(tagCounts, 3);
+
+    const listText = entries => entries.length
+      ? entries.map(([name, count], i) =>
+          `<span>${i + 1}. ${escapeHtml(name)} <strong>${count}</strong></span>`
+        ).join("")
+      : `<span>기록 없음</span>`;
+
+    el.innerHTML = `
+      <div class="weakness-headline">총 <strong>${totalGoals}</strong>실점 분석</div>
+
+      <div class="weakness-grid">
+        <div><small>발생상황</small>${listText(primary)}</div>
+        <div><small>공격형태</small>${listText(attack)}</div>
+        <div><small>마무리</small>${listText(finish)}</div>
+        <div><small>이동/패스 태그</small>${listText(tags)}</div>
+      </div>
+
+      <div class="weakness-tip">
+        <strong>훈련 추천</strong>
+        ${escapeHtml(weaknessTip(
+          primary[0]?.[0] || "",
+          attack[0]?.[0] || "",
+          finish[0]?.[0] || "",
+          tags[0]?.[0] || ""
+        ))}
+      </div>
+    `;
+  }
+
+
   function renderSeasonStats() {
     const previousSelection = statsGoalieSelect.value || "all";
     refreshStatsGoalieSelect();
@@ -1966,14 +2453,20 @@
     statsGoalieSelect.value = optionExists ? previousSelection : "all";
 
     const selected = statsGoalieSelect.value || "all";
-    const games = selected === "all"
-      ? [...savedGames]
-      : savedGames.filter(game => game.goalieName === selected);
+
+    const appearances = [];
+    savedGames.forEach(game => {
+      getGoalieRecords(game).forEach(record => {
+        if (selected === "all" || record.goalieName === selected) {
+          appearances.push({ game, record });
+        }
+      });
+    });
 
     const empty = document.getElementById("statsEmpty");
     const content = document.getElementById("statsContent");
 
-    if (games.length === 0) {
+    if (appearances.length === 0) {
       empty.classList.remove("hidden");
       content.classList.add("hidden");
       return;
@@ -1989,14 +2482,14 @@
     let totalShootoutAttempts = 0;
     const allGoals = [];
 
-    games.forEach(game => {
-      const totals = gameTotals(game);
+    appearances.forEach(({ game, record }) => {
+      const totals = goalieRecordTotals(record);
       totalSog += totals.sog;
       totalGa += totals.ga;
 
-      (game.goals || []).forEach(goal => allGoals.push(goal));
+      (record.goals || []).forEach(goal => allGoals.push(goal));
 
-      const so = shootoutTotals(game);
+      const so = goalieShootoutTotals(game, record);
       totalShootoutSaved += so.saved;
       totalShootoutGoals += so.goals;
       totalShootoutAttempts += so.count;
@@ -2006,18 +2499,22 @@
       ? `${(((totalSog - totalGa) / totalSog) * 100).toFixed(1)}%`
       : "—";
 
-    document.getElementById("statsGames").textContent = games.length;
-    document.getElementById("statsSave").textContent = seasonSave;
-    document.getElementById("statsAvgSog").textContent = (totalSog / games.length).toFixed(1);
-    document.getElementById("statsAvgGa").textContent = (totalGa / games.length).toFixed(2);
+    const distinctGameCount = new Set(appearances.map(item => item.game.id)).size;
+    const divisor = appearances.length || 1;
 
-    const comparable = games
-      .map(game => {
-        const totals = gameTotals(game);
+    document.getElementById("statsGames").textContent =
+      selected === "all" ? distinctGameCount : appearances.length;
+    document.getElementById("statsSave").textContent = seasonSave;
+    document.getElementById("statsAvgSog").textContent = (totalSog / divisor).toFixed(1);
+    document.getElementById("statsAvgGa").textContent = (totalGa / divisor).toFixed(2);
+
+    const comparable = appearances
+      .map(({ game, record }) => {
+        const totals = goalieRecordTotals(record);
         const numericSave = totals.sog > 0
           ? (totals.sog - totals.ga) / totals.sog
           : -1;
-        return { game, totals, numericSave };
+        return { game, record, totals, numericSave };
       })
       .sort((a, b) => b.numericSave - a.numericSave || b.totals.sog - a.totals.sog);
 
@@ -2025,7 +2522,7 @@
     document.getElementById("bestGameText").innerHTML = best && best.numericSave >= 0
       ? `
         ${escapeHtml(best.game.date || "-")} ·
-        ${escapeHtml(best.game.goalieName || "-")} vs
+        ${escapeHtml(best.record.goalieName || "-")} vs
         ${escapeHtml(best.game.opponent || "-")}<br>
         SOG ${best.totals.sog} · GA ${best.totals.ga} · SAVE ${best.totals.save}
       `
@@ -2060,24 +2557,37 @@
       });
     });
 
-    renderRankList("reasonStats", primaryCauseCounts);
-    renderRankList("attackTypeStats", attackTypeCounts);
-    renderRankList("finishStats", finishTypeCounts);
-    renderRankList("movementTagStats", movementTagCounts);
+    renderRankList("reasonStats", Object.entries(primaryCauseCounts)
+      .sort((a, b) => b[1] - a[1]));
+    renderRankList("attackTypeStats", Object.entries(attackTypeCounts)
+      .sort((a, b) => b[1] - a[1]));
+    renderRankList("finishStats", Object.entries(finishTypeCounts)
+      .sort((a, b) => b[1] - a[1]));
+    renderRankList("movementTagStats", Object.entries(movementTagCounts)
+      .sort((a, b) => b[1] - a[1]));
+
+    renderWeaknessSummary(
+      primaryCauseCounts,
+      attackTypeCounts,
+      finishTypeCounts,
+      movementTagCounts,
+      allGoals.length
+    );
+
     renderRankList("locationStats", countBy(allGoals, "location"));
     renderRankList("bodyStats", countBy(allGoals, "body"));
 
-    const sortedGames = [...games].sort((a, b) =>
-      String(b.date || "").localeCompare(String(a.date || ""))
+    const sortedAppearances = [...appearances].sort((a, b) =>
+      String(b.game.date || "").localeCompare(String(a.game.date || ""))
     );
 
-    document.getElementById("statsGameRows").innerHTML = sortedGames.map(game => {
-      const totals = gameTotals(game);
+    document.getElementById("statsGameRows").innerHTML = sortedAppearances.map(({ game, record }) => {
+      const totals = goalieRecordTotals(record);
 
       return `
         <div class="stats-game-row">
           <div>
-            <strong>${escapeHtml(game.date || "-")} · ${escapeHtml(game.goalieName || "-")}</strong>
+            <strong>${escapeHtml(game.date || "-")} · ${escapeHtml(record.goalieName || "-")}</strong>
             <small>vs ${escapeHtml(game.opponent || "-")} · SOG ${totals.sog} · GA ${totals.ga}</small>
           </div>
           <div class="stats-game-save">${totals.save}</div>

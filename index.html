@@ -124,7 +124,7 @@
           </label>
 
           <label>
-            골리 선택
+            선발 골리
             <select id="goalieSelect" required></select>
           </label>
 
@@ -176,8 +176,8 @@
             </select>
           </label>
 
-          <label>
-            골리
+          <label class="legacy-goalie-edit hidden">
+            선발 골리
             <select id="editGoalieSelect"></select>
           </label>
         </section>
@@ -186,10 +186,23 @@
           임시 저장된 경기 기록을 불러왔습니다.
         </div>
 
+        <section class="goalie-switch-card">
+          <div class="goalie-switch-head">
+            <div>
+              <h3>🥅 현재 기록 골리</h3>
+              <p>경기 중 골리가 교체되면 여기서 새 골리를 선택하세요. 이후 기록은 선택한 골리에게 따로 저장됩니다.</p>
+            </div>
+          </div>
+
+          <select id="activeGoalieSelect" class="active-goalie-select"></select>
+
+          <div id="gameGoalieSummary" class="game-goalie-summary"></div>
+        </section>
+
         <div id="periodContainer" class="period-grid"></div>
 
         <section class="total-card">
-          <h3>TOTAL</h3>
+          <h3 id="activeGoalieTotalTitle">TOTAL</h3>
           <div class="total-stats">
             <div>
               <span class="stat-label">SOG</span>
@@ -202,6 +215,15 @@
             <div>
               <span class="stat-label">SAVE%</span>
               <strong id="totalSave">—</strong>
+            </div>
+          </div>
+
+          <div class="team-total-mini">
+            <div class="team-total-title">우리팀 골리 전체 TOTAL</div>
+            <div class="team-total-stats">
+              <span>SOG <strong id="teamTotalSog">0</strong></span>
+              <span>GA <strong id="teamTotalGa">0</strong></span>
+              <span>SAVE% <strong id="teamTotalSave">—</strong></span>
             </div>
           </div>
 
@@ -258,6 +280,32 @@
             </div>
 
             <div id="shootoutList" class="analysis-list"></div>
+          </div>
+        </section>
+
+        <section class="coach-memo-card">
+          <div class="section-heading">
+            <div>
+              <h3>📝 코치 메모</h3>
+              <p>경기 후 성장 포인트를 간단히 남겨두세요.</p>
+            </div>
+          </div>
+
+          <div class="coach-memo-grid">
+            <label>
+              잘한 점
+              <textarea id="coachGood" placeholder="예: 리바운드 컨트롤, 세컨드 세이브 좋음"></textarea>
+            </label>
+
+            <label>
+              개선할 점
+              <textarea id="coachImprove" placeholder="예: East-West 이동 후 세팅이 늦음"></textarea>
+            </label>
+
+            <label>
+              다음 훈련 포인트
+              <textarea id="coachNext" placeholder="예: 2-on-1 읽기 + 포스트 이동 반복"></textarea>
+            </label>
           </div>
         </section>
 
@@ -458,7 +506,7 @@
         <button id="backFromStats" class="back-btn" type="button">←</button>
         <div>
           <h2>📊 시즌 통계</h2>
-          <p>골리별 경기 기록을 자동 집계합니다.</p>
+          <p>한 경기에서 교체 출전한 골리까지 골리별로 자동 집계합니다.</p>
         </div>
       </header>
 
@@ -492,6 +540,11 @@
               <span>평균 GA</span>
               <strong id="statsAvgGa">0</strong>
             </article>
+          </section>
+
+          <section class="detail-card weakness-summary-card">
+            <h3>🧠 시즌 약점 자동 요약</h3>
+            <div id="weaknessSummary" class="weakness-summary">기록을 분석 중입니다.</div>
           </section>
 
           <section class="detail-card">

@@ -1412,3 +1412,356 @@ button:disabled {
     grid-column: auto;
   }
 }
+
+
+/* v1.8: 경기별 코치 메모 */
+.coach-memo-card {
+  margin-top: 14px;
+  padding: 14px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+}
+
+.coach-memo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.coach-memo-grid label {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.coach-memo-grid textarea {
+  width: 100%;
+  min-height: 88px;
+  margin-top: 6px;
+  resize: vertical;
+}
+
+.coach-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.coach-detail-grid > div {
+  padding: 10px;
+  background: #f7fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.coach-detail-grid span {
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.coach-detail-grid p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+/* v1.8: 경기 상세 골리 비교 */
+.goalie-comparison-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.goalie-comparison-summary > div {
+  padding: 12px;
+  text-align: center;
+  background: #f4f8fd;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.goalie-comparison-summary > div:nth-child(2) {
+  background: #fff6f6;
+}
+
+.goalie-comparison-summary span,
+.goalie-comparison-summary small {
+  display: block;
+}
+
+.goalie-comparison-summary span {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.goalie-comparison-summary strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 25px;
+}
+
+.comparison-table-wrap {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  min-width: 650px;
+}
+
+.comparison-table th:nth-child(n+5),
+.comparison-table td:nth-child(n+5) {
+  background: #fffafa;
+}
+
+/* v1.8: 시즌 약점 자동 요약 */
+.weakness-summary-card {
+  border: 2px solid #d7e5f2;
+}
+
+.weakness-headline {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.weakness-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.weakness-grid > div {
+  padding: 10px;
+  background: #f7fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.weakness-grid small {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--blue-dark);
+  font-weight: 900;
+}
+
+.weakness-grid span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.weakness-grid span strong {
+  float: right;
+}
+
+.weakness-tip {
+  margin-top: 10px;
+  padding: 11px;
+  background: #fff8df;
+  border: 1px solid #eadc9d;
+  border-radius: 10px;
+  line-height: 1.45;
+}
+
+.weakness-tip strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 680px) {
+  .coach-memo-grid,
+  .coach-detail-grid,
+  .weakness-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* v1.9: 경기 중심 · 멀티 골리 */
+.goalie-switch-card {
+  margin-bottom: 14px;
+  padding: 14px;
+  background: #eef6ff;
+  border: 2px solid #cbdff2;
+  border-radius: 15px;
+}
+
+.goalie-switch-head h3 {
+  margin: 0 0 4px;
+}
+
+.goalie-switch-head p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.active-goalie-select {
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  font-weight: 900;
+  border: 2px solid var(--blue);
+}
+
+.game-goalie-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.game-goalie-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  background: white;
+  border: 1px solid #cbd7e2;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.game-goalie-chip strong {
+  font-size: 13px;
+}
+
+.game-goalie-chip.active {
+  color: white;
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.game-goalie-chip.active span {
+  color: white;
+}
+
+.team-total-mini {
+  margin-top: 11px;
+  padding: 9px 12px 10px;
+  background: #edf7ff;
+  border: 1px solid #c7dff2;
+  border-radius: 12px;
+}
+
+.team-total-title {
+  margin-bottom: 6px;
+  color: var(--blue-dark);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.team-total-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  color: #6b7788;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.team-total-stats strong {
+  display: inline-block;
+  margin-left: 3px;
+  color: #202c3c;
+  font-size: 15px;
+}
+
+.game-list-goalies {
+  margin: 7px 0 0;
+  padding: 7px 9px;
+  background: #f4f8fc;
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.goalie-appearance-card {
+  border-left: 4px solid var(--blue);
+}
+
+.appearance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.appearance-head h3 {
+  margin: 0;
+}
+
+.appearance-head small {
+  color: var(--muted);
+}
+
+.appearance-save {
+  text-align: right;
+}
+
+.appearance-save strong,
+.appearance-save span {
+  display: block;
+}
+
+.appearance-save strong {
+  color: var(--blue-dark);
+  font-size: 25px;
+}
+
+.appearance-save span {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.goalie-period-table {
+  width: 100%;
+}
+
+.detail-helper {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail-goalie-goals {
+  margin-top: 12px;
+}
+
+.shootout-goalie-breakdown {
+  display: grid;
+  gap: 8px;
+}
+
+.shootout-goalie-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  background: #f4f8fc;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.shootout-goalie-row.opponent {
+  background: #fff6f6;
+}
+
+@media (max-width: 520px) {
+  .appearance-head,
+  .shootout-goalie-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .appearance-save {
+    text-align: left;
+  }
+}
