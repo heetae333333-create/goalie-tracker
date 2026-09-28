@@ -1,11 +1,11 @@
-const CACHE_NAME = "goalie-tracker-v2.1.0";
+const CACHE_NAME = "goalie-tracker-v2.2.0";
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css",
-  "./app.js",
-  "./manifest.json",
+  "./style.css?v=22",
+  "./app.js?v=22",
+  "./manifest.json?v=22",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png"
@@ -33,6 +33,30 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isNavigation = event.request.mode === "navigate";
+  const isCodeAsset = isSameOrigin &&
+    (url.pathname.endsWith(".js") || url.pathname.endsWith(".css") || url.pathname.endsWith(".html"));
+
+  if (isNavigation || isCodeAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(event.request)
+            .then(cached => cached || caches.match("./index.html"))
+        )
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request)

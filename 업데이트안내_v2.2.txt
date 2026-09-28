@@ -1,0 +1,17 @@
+Goalie Tracker Pro v2.2 - CACHE FIX
+
+이 버전은 v2.1 기능을 그대로 유지하면서 브라우저/PWA가 오래된 app.js를 계속 불러오는 문제를 방지합니다.
+
+확인 포인트
+- 홈 화면 제목 아래에 v2.2가 작게 표시됩니다.
+- 실점 분석에는 '슛 위치 — 링크장을 터치하세요' 링크장 도면과
+  '실점 위치 — 골대 안쪽을 터치하세요' 골대 도면이 함께 나와야 합니다.
+
+GitHub 적용
+1. ZIP 압축 해제
+2. goalie-tracker 저장소 → Add file → Upload files
+3. 파일 전체를 저장소 루트에 업로드
+4. Commit changes
+5. 1~3분 후 아래 주소로 접속
+   https://heetae333333-create.github.io/goalie-tracker/?v=22
+6. 홈 화면에 v2.2 표시가 보이는지 먼저 확인
