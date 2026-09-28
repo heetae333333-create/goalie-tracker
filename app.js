@@ -809,6 +809,9 @@
       if (typeof goal.attackType !== "string") goal.attackType = "";
       if (typeof goal.finishType !== "string") goal.finishType = "";
       if (!Array.isArray(goal.movementTags)) goal.movementTags = [];
+      if (typeof goal.shotLocation !== "string") goal.shotLocation = "";
+      if (typeof goal.shotX !== "number") goal.shotX = null;
+      if (typeof goal.shotY !== "number") goal.shotY = null;
     });
 
     if (!currentGame.shootout || typeof currentGame.shootout !== "object") {
@@ -864,6 +867,9 @@
         location: "",
         x: null,
         y: null,
+        shotLocation: "",
+        shotX: null,
+        shotY: null,
         body: "",
         memo: "",
         goalieId: currentGame.activeGoalieId || currentGame.goalieId || "",
@@ -927,6 +933,95 @@
         </text>
       </svg>
     `;
+  }
+
+  function rinkSvgMarkup() {
+    return `
+      <svg class="rink-svg" viewBox="0 0 720 440" aria-hidden="true">
+        <defs>
+          <linearGradient id="rinkIce" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#eef6fc"/>
+          </linearGradient>
+        </defs>
+
+        <rect x="10" y="10" width="700" height="420" rx="74"
+              fill="url(#rinkIce)" stroke="#9eaab5" stroke-width="5"/>
+
+        <!-- 공격 방향: 오른쪽 블루라인에서 왼쪽 골대 -->
+        <line x1="535" y1="12" x2="535" y2="428"
+              stroke="#1f77b4" stroke-width="6" opacity=".95"/>
+
+        <line x1="92" y1="32" x2="92" y2="408"
+              stroke="#d92a2a" stroke-width="4" opacity=".55"/>
+
+        <!-- 골대 -->
+        <path d="M62 188 L94 188 L94 252 L62 252 Q38 220 62 188 Z"
+              fill="#c8def2" stroke="#d92a2a" stroke-width="5"/>
+
+        <!-- 크리즈 -->
+        <path d="M94 175
+                 A70 45 0 0 1 94 265
+                 L94 175 Z"
+              fill="#c8def2" stroke="#d92a2a" stroke-width="3" opacity=".9"/>
+
+        <!-- 페이스오프 서클 -->
+        <circle cx="270" cy="130" r="70"
+                fill="none" stroke="#e69aa4" stroke-width="3"/>
+        <circle cx="270" cy="310" r="70"
+                fill="none" stroke="#e69aa4" stroke-width="3"/>
+
+        <circle cx="270" cy="130" r="5" fill="#d92a2a"/>
+        <circle cx="270" cy="310" r="5" fill="#d92a2a"/>
+
+        <line x1="255" y1="130" x2="285" y2="130" stroke="#d92a2a" stroke-width="2"/>
+        <line x1="270" y1="115" x2="270" y2="145" stroke="#d92a2a" stroke-width="2"/>
+        <line x1="255" y1="310" x2="285" y2="310" stroke="#d92a2a" stroke-width="2"/>
+        <line x1="270" y1="295" x2="270" y2="325" stroke="#d92a2a" stroke-width="2"/>
+
+        <!-- 슬롯 가이드 -->
+        <path d="M100 178 L360 115 L360 325 L100 262 Z"
+              fill="#1b74d115" stroke="#1b74d145" stroke-width="2" stroke-dasharray="8 8"/>
+
+        <text x="615" y="220" text-anchor="middle"
+              fill="#587087" font-size="18" font-weight="800">
+          BLUE LINE
+        </text>
+
+        <text x="405" y="55" text-anchor="middle"
+              fill="#6b7788" font-size="16" font-weight="800">
+          ← 공격 방향
+        </text>
+      </svg>
+    `;
+  }
+
+  function classifyShotLocation(x, y) {
+    if (x < 18) {
+      if (y < 38) return "골라인 좌측";
+      if (y > 62) return "골라인 우측";
+      return "골대 근처";
+    }
+
+    if (x < 38) {
+      if (y < 34) return "좌측 로우 서클";
+      if (y > 66) return "우측 로우 서클";
+      return "로우 슬롯";
+    }
+
+    if (x < 60) {
+      if (y < 34) return "좌측 페이스오프 서클";
+      if (y > 66) return "우측 페이스오프 서클";
+      return "하이 슬롯";
+    }
+
+    if (x < 78) {
+      if (y < 40) return "좌측 포인트";
+      if (y > 60) return "우측 포인트";
+      return "중앙 포인트";
+    }
+
+    return "블루라인 부근";
   }
 
   function classifyGoalLocation(x, y) {
@@ -1069,24 +1164,59 @@
           </div>
 
           <div class="analysis-grid">
-            <div class="wide goal-map-wrap">
-              <div class="goal-map-title">실점 위치 — 골대 안쪽을 터치하세요</div>
-              <div class="goal-map" data-goal-map="${index}">
-                ${goalSvgMarkup()}
-                <div class="goal-touch-layer" data-goal-touch="${index}">
-                  ${goal.x != null && goal.y != null ? `
-                    <div class="goal-selected-dot"
-                      style="left:${goal.x}%;top:${goal.y}%"></div>
-                  ` : ""}
+            <div class="wide shot-goal-map-grid">
+              <div class="shot-map-wrap">
+                <div class="goal-map-title">슛 위치 — 링크장을 터치하세요</div>
+                <div class="shot-rink-map">
+                  ${rinkSvgMarkup()}
+                  <div class="shot-touch-layer" data-shot-touch="${index}">
+                    ${goal.shotX != null && goal.shotY != null ? `
+                      <div class="shot-selected-dot"
+                        style="left:${goal.shotX}%;top:${goal.shotY}%"></div>
+                    ` : ""}
+                  </div>
+                </div>
+
+                <div class="goal-zone-label">
+                  슛 위치:
+                  <span data-shot-location-text="${index}">
+                    ${escapeHtml(goal.shotLocation || "미선택")}
+                  </span>
+                </div>
+
+                <div class="goal-map-actions">
+                  <button type="button"
+                    class="clear-location-btn"
+                    data-clear-shot-location="${index}">
+                    슛 위치 지우기
+                  </button>
                 </div>
               </div>
-              <div class="goal-zone-label">
-                선택 위치: <span data-goal-location-text="${index}">${escapeHtml(goal.location || "미선택")}</span>
-              </div>
-              <div class="goal-map-actions">
-                <button type="button" class="clear-location-btn" data-clear-goal-location="${index}">
-                  위치 지우기
-                </button>
+
+              <div class="goal-map-wrap">
+                <div class="goal-map-title">실점 위치 — 골대 안쪽을 터치하세요</div>
+                <div class="goal-map" data-goal-map="${index}">
+                  ${goalSvgMarkup()}
+                  <div class="goal-touch-layer" data-goal-touch="${index}">
+                    ${goal.x != null && goal.y != null ? `
+                      <div class="goal-selected-dot"
+                        style="left:${goal.x}%;top:${goal.y}%"></div>
+                    ` : ""}
+                  </div>
+                </div>
+                <div class="goal-zone-label">
+                  실점 위치:
+                  <span data-goal-location-text="${index}">
+                    ${escapeHtml(goal.location || "미선택")}
+                  </span>
+                </div>
+                <div class="goal-map-actions">
+                  <button type="button"
+                    class="clear-location-btn"
+                    data-clear-goal-location="${index}">
+                    실점 위치 지우기
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1156,6 +1286,24 @@
       return;
     }
 
+    const shotTouchLayer = event.target.closest("[data-shot-touch]");
+    if (shotTouchLayer) {
+      const index = Number(shotTouchLayer.dataset.shotTouch);
+      const rect = shotTouchLayer.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
+      const location = classifyShotLocation(x, y);
+
+      currentGame.goals[index].shotX = Number(x.toFixed(2));
+      currentGame.goals[index].shotY = Number(y.toFixed(2));
+      currentGame.goals[index].shotLocation = location;
+
+      renderGoalAnalysis();
+      saveCurrentGame();
+      showToast(`슛 위치: ${location}`);
+      return;
+    }
+
     const touchLayer = event.target.closest("[data-goal-touch]");
     if (touchLayer) {
       const index = Number(touchLayer.dataset.goalTouch);
@@ -1171,6 +1319,17 @@
       renderGoalAnalysis();
       saveCurrentGame();
       showToast(`실점 위치: ${location}`);
+      return;
+    }
+
+    const clearShotButton = event.target.closest("[data-clear-shot-location]");
+    if (clearShotButton) {
+      const index = Number(clearShotButton.dataset.clearShotLocation);
+      currentGame.goals[index].shotX = null;
+      currentGame.goals[index].shotY = null;
+      currentGame.goals[index].shotLocation = "";
+      renderGoalAnalysis();
+      saveCurrentGame();
       return;
     }
 
@@ -1813,7 +1972,8 @@
           goal.attackType,
           goal.finishType || goal.reason,
           ...(Array.isArray(goal.movementTags) ? goal.movementTags : []),
-          goal.location,
+          goal.shotLocation ? `슛:${goal.shotLocation}` : "",
+          goal.location ? `실점:${goal.location}` : "",
           goal.body
         ].filter(Boolean).join(" / ");
 
@@ -1978,7 +2138,8 @@
                   goal.attackType,
                   goal.finishType || goal.reason,
                   ...(Array.isArray(goal.movementTags) ? goal.movementTags : []),
-                  goal.location,
+                  goal.shotLocation ? `슛:${goal.shotLocation}` : "",
+                  goal.location ? `실점:${goal.location}` : "",
                   goal.body
                 ].filter(Boolean).join(" / ") || "상세 미입력")}
                 ${goal.memo ? `<br><small>${escapeHtml(goal.memo)}</small>` : ""}
