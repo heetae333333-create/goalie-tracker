@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Goalie Tracker">
 
-  <link rel="manifest" href="manifest.json?v=26">
+  <link rel="manifest" href="manifest.json?v=27">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
   <div class="app-shell">
@@ -25,7 +25,7 @@
         <div class="hero-icon">🏒</div>
         <h1>Goalie Tracker Pro</h1>
         <p>아이스하키 골리 기록 시스템</p>
-        <div class="build-version">v2.6</div>
+        <div class="build-version">v2.7</div>
       </header>
 
       <main class="menu">
@@ -699,6 +699,25 @@
             <div id="weaknessSummary" class="weakness-summary">기록을 분석 중입니다.</div>
           </section>
 
+          <section class="detail-card visual-analysis-card">
+            <h3>🗺️ 시각 분석 보드</h3>
+            <p class="detail-helper">저장된 실점 기록을 기준으로 슛 시작 위치와 실점 위치 경향을 한눈에 봅니다.</p>
+            <div class="visual-board-grid">
+              <div>
+                <h4>슛 위치 분포</h4>
+                <div id="statsShotMapBoard" class="stats-board-map"></div>
+              </div>
+              <div>
+                <h4>실점 위치 분포</h4>
+                <div id="statsGoalMapBoard" class="stats-board-map"></div>
+              </div>
+            </div>
+            <div class="visual-pair-box">
+              <h4>자주 나온 연결 패턴</h4>
+              <div id="statsLinkPatterns" class="link-pattern-list"></div>
+            </div>
+          </section>
+
           <section class="detail-card">
             <h3>🏆 최고 경기</h3>
             <div id="bestGameText" class="best-game-text">—</div>
@@ -770,6 +789,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>

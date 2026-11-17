@@ -3086,7 +3086,7 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
-        await navigator.serviceWorker.register("./sw.js?v=26");
+        await navigator.serviceWorker.register("./sw.js?v=27");
         await navigator.serviceWorker.ready;
         serviceWorkerReady = true;
         updateConnectionStatus();
@@ -3392,6 +3392,78 @@
   }
 
 
+  function renderVisualMapBoard(elementId, mode, goals) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    if (!goals.length) {
+      element.innerHTML = `<div class="empty-analysis">시각화할 실점 기록이 없습니다.</div>`;
+      return;
+    }
+
+    if (mode === "shot") {
+      const dots = goals
+        .filter(goal => typeof goal.shotX === "number" && typeof goal.shotY === "number")
+        .map(goal => `<div class="stats-map-dot shot" style="left:${goal.shotX}%;top:${goal.shotY}%" title="${escapeHtml(goal.shotLocation || '슛 위치')}
+${escapeHtml(goal.location || '')}"></div>`)
+        .join("");
+      element.innerHTML = `
+        <div class="stats-shot-map-wrap">
+          ${rinkSvgMarkup()}
+          <div class="stats-map-overlay">${dots}</div>
+        </div>
+        <div class="stats-map-caption">총 ${goals.filter(goal => typeof goal.shotX === "number" && typeof goal.shotY === "number").length}개 표시</div>
+      `;
+      return;
+    }
+
+    const dots = goals
+      .filter(goal => typeof goal.x === "number" && typeof goal.y === "number")
+      .map(goal => `<div class="stats-map-dot goal" style="left:${goal.x}%;top:${goal.y}%" title="${escapeHtml(goal.location || '실점 위치')}
+${escapeHtml(goal.body || '')}"></div>`)
+      .join("");
+    element.innerHTML = `
+      <div class="stats-goal-map-wrap">
+        ${goalSvgMarkup()}
+        <div class="stats-map-overlay">${dots}</div>
+      </div>
+      <div class="stats-map-caption">총 ${goals.filter(goal => typeof goal.x === "number" && typeof goal.y === "number").length}개 표시</div>
+    `;
+  }
+
+  function renderLinkPatterns(goals) {
+    const element = document.getElementById("statsLinkPatterns");
+    if (!element) return;
+    const counts = {};
+    goals.forEach(goal => {
+      const from = goal.shotLocation || "슛위치 미입력";
+      const to = goal.location || "실점위치 미입력";
+      const body = goal.body || "부위 미입력";
+      const key = `${from} → ${to} (${body})`;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0],'ko')).slice(0,6);
+    if (!entries.length) {
+      element.innerHTML = `<div class="empty-analysis">실점 위치/슛 위치 기록이 쌓이면 자동으로 패턴을 보여줍니다.</div>`;
+      return;
+    }
+    const max = Math.max(...entries.map(([,count])=>count));
+    element.innerHTML = entries.map(([name,count])=>`
+      <div class="link-pattern-row">
+        <div class="link-pattern-name">${escapeHtml(name)}</div>
+        <div class="link-pattern-bar"><div style="width:${(count/max)*100}%"></div></div>
+        <strong>${count}</strong>
+      </div>
+    `).join('');
+  }
+
+  function renderVisualSeasonAnalysis(goals) {
+    renderVisualMapBoard("statsShotMapBoard", "shot", goals);
+    renderVisualMapBoard("statsGoalMapBoard", "goal", goals);
+    renderLinkPatterns(goals);
+  }
+
+
   function renderSeasonStats() {
     const previousGoalie = statsGoalieSelect.value || "all";
     refreshStatsGoalieSelect();
@@ -3479,6 +3551,7 @@
     renderWeaknessSummary(primaryCauseCounts, attackTypeCounts, finishTypeCounts, movementTagCounts, allGoals.length);
     renderRankList("locationStats", countBy(allGoals, "location"));
     renderRankList("bodyStats", countBy(allGoals, "body"));
+    renderVisualSeasonAnalysis(allGoals);
 
     document.getElementById("statsGameRows").innerHTML = [...appearances]
       .sort((a,b)=>String(b.game.date||"").localeCompare(String(a.game.date||"")))
