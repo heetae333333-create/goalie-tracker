@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Goalie Tracker">
 
-  <link rel="manifest" href="manifest.json?v=24">
+  <link rel="manifest" href="manifest.json?v=25">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <div class="app-shell">
@@ -25,7 +25,7 @@
         <div class="hero-icon">🏒</div>
         <h1>Goalie Tracker Pro</h1>
         <p>아이스하키 골리 기록 시스템</p>
-        <div class="build-version">v2.4</div>
+        <div class="build-version">v2.5</div>
       </header>
 
       <main class="menu">
@@ -153,6 +153,20 @@
       <main class="content record-content">
         <section id="editGameInfoPanel" class="panel hidden">
           <h3 class="edit-panel-title">✏ 경기 정보 수정</h3>
+
+          <label>
+            경기 분류
+            <select id="editGameType">
+              <option value="official">실제 경기</option>
+              <option value="practice">연습 경기</option>
+              <option value="game_lesson">게임 레슨</option>
+            </select>
+          </label>
+
+          <label>
+            그룹 / 폴더
+            <input id="editGameGroup" type="text" maxlength="40" list="groupOptions" placeholder="예: 트라이던트 U12 / 개인 게임레슨">
+          </label>
 
           <label>
             날짜
@@ -756,6 +770,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>

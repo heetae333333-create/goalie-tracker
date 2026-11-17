@@ -47,6 +47,8 @@
   const lessonStintHistory = document.getElementById("lessonStintHistory");
   const lessonGoalieTotals = document.getElementById("lessonGoalieTotals");
   const editGameInfoPanel = document.getElementById("editGameInfoPanel");
+  const editGameType = document.getElementById("editGameType");
+  const editGameGroup = document.getElementById("editGameGroup");
   const editGoalieSelect = document.getElementById("editGoalieSelect");
   const activeGoalieSelect = document.getElementById("activeGoalieSelect");
   const currentGoalieName = document.getElementById("currentGoalieName");
@@ -539,6 +541,8 @@
     if (!currentGame) return;
 
     refreshEditGoalieSelect(currentGame.goalieId || "");
+    editGameType.value = normalizedGameType(currentGame);
+    editGameGroup.value = currentGame.groupName || "";
     document.getElementById("editGameDate").value = currentGame.date || todayLocal();
     document.getElementById("editOpponentTeam").value = currentGame.opponent || "";
     document.getElementById("editRinkName").value = currentGame.rink || "";
@@ -551,6 +555,8 @@
 
     const selectedGoalie = goalies.find(goalie => goalie.id === editGoalieSelect.value);
 
+    currentGame.gameType = editGameType.value || "official";
+    currentGame.groupName = editGameGroup.value.trim();
     currentGame.date = document.getElementById("editGameDate").value || currentGame.date;
     currentGame.opponent = document.getElementById("editOpponentTeam").value.trim() || currentGame.opponent;
     currentGame.rink = document.getElementById("editRinkName").value.trim();
@@ -1110,6 +1116,8 @@
       `🏒 vs ${currentGame.opponent}`;
 
     const details = [
+      gameTypeLabel(currentGame),
+      currentGame.groupName || "",
       currentGame.date,
       currentGame.homeAway,
       currentGame.tournament || "",
@@ -1277,16 +1285,16 @@
     return `
       <svg class="goal-svg" viewBox="0 0 600 360" aria-hidden="true">
         <defs>
-          <linearGradient id="iceGrad" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id="iceGrad25" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stop-color="#ffffff"/>
             <stop offset="100%" stop-color="#eaf2f9"/>
           </linearGradient>
-          <pattern id="netPattern" width="26" height="26" patternUnits="userSpaceOnUse">
+          <pattern id="netPattern25" width="26" height="26" patternUnits="userSpaceOnUse">
             <path d="M 0 0 L 26 26 M 26 0 L 0 26" stroke="#b9c5d2" stroke-width="2"/>
           </pattern>
         </defs>
 
-        <rect x="0" y="0" width="600" height="360" fill="url(#iceGrad)"/>
+        <rect x="0" y="0" width="600" height="360" fill="url(#iceGrad25)"/>
         <ellipse cx="300" cy="320" rx="250" ry="24" fill="#cfd9e4" opacity=".45"/>
 
         <path d="M80 310 L105 72 Q300 22 495 72 L520 310"
@@ -1294,7 +1302,7 @@
               stroke-linecap="round" stroke-linejoin="round"/>
 
         <path d="M105 80 Q300 38 495 80 L495 310 L105 310 Z"
-              fill="url(#netPattern)" opacity=".9"/>
+              fill="url(#netPattern25)" opacity=".9"/>
 
         <line x1="105" y1="310" x2="495" y2="310"
               stroke="#d62424" stroke-width="22" stroke-linecap="round"/>
@@ -1306,6 +1314,23 @@
         <line x1="365" y1="70" x2="365" y2="310" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
         <line x1="105" y1="150" x2="495" y2="150" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
         <line x1="105" y1="230" x2="495" y2="230" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
+
+        <!-- goalie silhouette -->
+        <g class="goalie-silhouette" opacity=".95">
+          <ellipse cx="300" cy="314" rx="95" ry="14" fill="#8ea0b4" opacity=".35"/>
+          <rect x="279" y="84" width="42" height="42" rx="15" fill="#1f2f44"/>
+          <rect x="270" y="92" width="60" height="24" rx="9" fill="#f6f7f8" stroke="#9aa7b5" stroke-width="2"/>
+          <path d="M258 124 Q300 109 342 124 L350 196 Q300 212 250 196 Z" fill="#18314d"/>
+          <path d="M242 140 L258 134 L270 182 L251 190 Z" fill="#f3f5f7" stroke="#9aa7b5" stroke-width="2"/>
+          <path d="M342 135 L356 140 L349 192 L331 186 Z" fill="#f3f5f7" stroke="#9aa7b5" stroke-width="2"/>
+          <ellipse cx="231" cy="165" rx="16" ry="22" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
+          <ellipse cx="369" cy="170" rx="18" ry="13" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
+          <rect x="266" y="196" width="20" height="89" rx="9" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
+          <rect x="314" y="196" width="20" height="89" rx="9" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
+          <path d="M350 222 L414 212 L418 220 L352 233 Z" fill="#d0a04d" stroke="#8b6a34" stroke-width="2"/>
+          <line x1="407" y1="212" x2="422" y2="212" stroke="#8b6a34" stroke-width="4" stroke-linecap="round"/>
+          <line x1="300" y1="240" x2="300" y2="275" stroke="#18314d" stroke-width="8" stroke-linecap="round"/>
+        </g>
 
         <text x="300" y="344" text-anchor="middle" fill="#6b7788" font-size="18" font-weight="700">
           골대 안쪽을 터치하세요
@@ -1487,6 +1512,11 @@
                 <div class="goal-map-title">슛 위치 — 링크장을 터치하세요</div>
                 <div class="shot-rink-map">
                   ${rinkSvgMarkup()}
+                  ${goal.shotX != null && goal.shotY != null ? `
+                    <svg class="shot-path-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      <line x1="11.5" y1="50" x2="${goal.shotX}" y2="${goal.shotY}"></line>
+                    </svg>
+                  ` : ""}
                   <div class="shot-touch-layer" data-shot-touch="${index}">
                     ${goal.shotX != null && goal.shotY != null ? `
                       <div class="shot-selected-dot"
@@ -1515,6 +1545,11 @@
                 <div class="goal-map-title">실점 위치 — 골대 안쪽을 터치하세요</div>
                 <div class="goal-map" data-goal-map="${index}">
                   ${goalSvgMarkup()}
+                  ${goal.x != null && goal.y != null ? `
+                    <svg class="goal-path-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      <line x1="50" y1="93" x2="${goal.x}" y2="${goal.y}"></line>
+                    </svg>
+                  ` : ""}
                   <div class="goal-touch-layer" data-goal-touch="${index}">
                     ${goal.x != null && goal.y != null ? `
                       <div class="goal-selected-dot"
@@ -2179,6 +2214,8 @@
   });
 
   [
+    "editGameType",
+    "editGameGroup",
     "editGameDate",
     "editOpponentTeam",
     "editRinkName",
@@ -2878,7 +2915,7 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
-        await navigator.serviceWorker.register("./sw.js?v=24");
+        await navigator.serviceWorker.register("./sw.js?v=25");
         await navigator.serviceWorker.ready;
         serviceWorkerReady = true;
         updateConnectionStatus();

@@ -2004,3 +2004,71 @@ button:disabled {
 .folder-move-row select { margin:0; min-height:46px; }
 .folder-move-row .secondary-btn { width:auto; min-height:46px; padding:10px 14px; font-size:13px; }
 @media (max-width:520px) { .folder-move-row { grid-template-columns:1fr; } .folder-move-row .secondary-btn { width:100%; } }
+
+
+/* v2.5 edit game classification + shot line visuals */
+#editGameInfoPanel {
+  border: 2px solid #dbe8f6;
+  background: #f7fbff;
+}
+
+.shot-rink-map,
+.goal-map {
+  position: relative;
+  overflow: hidden;
+}
+
+.shot-path-overlay,
+.goal-path-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.shot-path-overlay line,
+.goal-path-overlay line {
+  stroke: rgba(29, 93, 174, 0.82);
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-dasharray: 0;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.18));
+}
+
+.goal-path-overlay line {
+  stroke: rgba(217, 36, 36, 0.76);
+}
+
+.shot-touch-layer,
+.goal-touch-layer {
+  z-index: 2;
+}
+
+.shot-selected-dot,
+.goal-selected-dot {
+  z-index: 3;
+}
+
+.goalie-silhouette {
+  pointer-events: none;
+}
+
+.goal-map-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goal-map-title::before {
+  content: "●";
+  font-size: 12px;
+  color: #1d5dae;
+}
+
+.goal-map-wrap .goal-map-title::before {
+  color: #d62424;
+}
+
+.edit-panel-title {
+  margin-bottom: 10px;
+}

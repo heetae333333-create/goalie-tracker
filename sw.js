@@ -1,11 +1,11 @@
-const CACHE_NAME = "goalie-tracker-v2.4.0";
+const CACHE_NAME = "goalie-tracker-v2.5.0";
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=24",
-  "./app.js?v=24",
-  "./manifest.json?v=24",
+  "./style.css?v=25",
+  "./app.js?v=25",
+  "./manifest.json?v=25",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png"
