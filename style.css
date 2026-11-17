@@ -2272,3 +2272,109 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v2.8: shot map geometry / touch alignment fix */
+.shot-rink-map {
+  width: 100%;
+  aspect-ratio: 760 / 640 !important;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none !important;
+}
+
+.shot-rink-map .rink-svg,
+.shot-rink-map .shot-draw-overlay,
+.shot-rink-map .shot-preview-overlay,
+.shot-rink-map .shot-touch-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.shot-rink-map .rink-svg {
+  object-fit: fill;
+}
+
+.shot-rink-map .shot-touch-layer {
+  z-index: 10 !important;
+  cursor: crosshair;
+}
+
+.goal-map .goal-svg,
+.goal-map .goal-touch-layer {
+  width: 100%;
+}
+
+.lesson-goal-analysis {
+  display: grid;
+  gap: 10px;
+}
+
+.lesson-goal-analysis-item {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.lesson-goal-analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.lesson-goal-analysis-head strong,
+.lesson-goal-analysis-head small {
+  display: block;
+}
+
+.lesson-goal-analysis-head small {
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.lesson-goal-delete {
+  border: 0;
+  border-radius: 9px;
+  background: #f5dddd;
+  color: #a62d2d;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.lesson-goal-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lesson-goal-analysis-grid label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lesson-goal-analysis-grid select,
+.lesson-goal-analysis-grid input {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 5px;
+}
+
+.lesson-goal-memo {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .lesson-goal-analysis-grid {
+    grid-template-columns: 1fr;
+  }
+  .lesson-goal-memo {
+    grid-column: auto;
+  }
+}

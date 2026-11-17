@@ -46,6 +46,7 @@
   const lessonNetPanels = document.getElementById("lessonNetPanels");
   const lessonStintHistory = document.getElementById("lessonStintHistory");
   const lessonGoalieTotals = document.getElementById("lessonGoalieTotals");
+  const lessonGoalAnalysis = document.getElementById("lessonGoalAnalysis");
   const editGameInfoPanel = document.getElementById("editGameInfoPanel");
   const editGameType = document.getElementById("editGameType");
   const editGameGroup = document.getElementById("editGameGroup");
@@ -767,6 +768,7 @@
     if (!game) return game;
     if (!Array.isArray(game.lessonGoalies)) game.lessonGoalies = [];
     if (!Array.isArray(game.lessonStints)) game.lessonStints = [];
+    if (!Array.isArray(game.lessonGoalEvents)) game.lessonGoalEvents = [];
     if (!game.activeLessonGoalies) game.activeLessonGoalies = { A: "", B: "" };
     if (!Array.isArray(game.participantGoalieIds)) {
       game.participantGoalieIds = game.lessonGoalies.map(item => item.goalieId);
@@ -817,6 +819,86 @@
     return (game.participantGoalieIds || [])
       .map(id => goalies.find(goalie => goalie.id === id) || game.lessonGoalies.find(item => item.goalieId === id))
       .filter(Boolean);
+  }
+
+  function createLessonGoalEvent(stint) {
+    if (!currentGame || !stint) return;
+    ensureLessonGame(currentGame);
+    currentGame.lessonGoalEvents.push({
+      id: `lesson_goal_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      stintId: stint.id,
+      goalieId: stint.goalieId,
+      goalieName: stint.goalieName,
+      net: stint.net,
+      causePrimary: "",
+      attackType: "",
+      finishType: "",
+      memo: "",
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  function removeLastLessonGoalEvent(stint) {
+    if (!currentGame || !stint) return;
+    ensureLessonGame(currentGame);
+    for (let i = currentGame.lessonGoalEvents.length - 1; i >= 0; i -= 1) {
+      if (currentGame.lessonGoalEvents[i].stintId === stint.id) {
+        currentGame.lessonGoalEvents.splice(i, 1);
+        return;
+      }
+    }
+  }
+
+  function renderLessonGoalAnalysis() {
+    if (!lessonGoalAnalysis || !currentGame) return;
+    ensureLessonGame(currentGame);
+
+    const events = currentGame.lessonGoalEvents || [];
+    if (!events.length) {
+      lessonGoalAnalysis.innerHTML = `<div class="empty-analysis">실점이 기록되면 골리별 분석란이 자동으로 생깁니다.</div>`;
+      return;
+    }
+
+    const primarySituations = Object.keys(GOAL_CAUSE_CONFIG);
+
+    lessonGoalAnalysis.innerHTML = events.map((goal, index) => {
+      const config = GOAL_CAUSE_CONFIG[goal.causePrimary] || { attackTypes: [], finishes: [] };
+      return `
+        <article class="lesson-goal-analysis-item" data-lesson-goal-id="${escapeHtml(goal.id)}">
+          <div class="lesson-goal-analysis-head">
+            <div>
+              <strong>${index + 1}. ${escapeHtml(goal.goalieName)} 실점</strong>
+              <small>${escapeHtml(goal.net)}골대</small>
+            </div>
+            <button type="button" class="lesson-goal-delete" data-delete-lesson-goal="${escapeHtml(goal.id)}">삭제</button>
+          </div>
+          <div class="lesson-goal-analysis-grid">
+            <label>
+              발생 상황
+              <select data-lesson-goal-field="causePrimary">
+                ${selectOptions(primarySituations, goal.causePrimary)}
+              </select>
+            </label>
+            <label>
+              공격 형태
+              <select data-lesson-goal-field="attackType" ${goal.causePrimary ? "" : "disabled"}>
+                ${selectOptions(config.attackTypes, goal.attackType)}
+              </select>
+            </label>
+            <label>
+              마무리
+              <select data-lesson-goal-field="finishType" ${goal.causePrimary ? "" : "disabled"}>
+                ${selectOptions(config.finishes, goal.finishType)}
+              </select>
+            </label>
+            <label class="lesson-goal-memo">
+              메모
+              <input type="text" data-lesson-goal-field="memo" value="${escapeHtml(goal.memo || "")}" placeholder="짧게 메모">
+            </label>
+          </div>
+        </article>
+      `;
+    }).join("");
   }
 
   function renderLessonRecord() {
@@ -895,6 +977,7 @@
       `;
     }).join("");
 
+    renderLessonGoalAnalysis();
     saveCurrentGame();
   }
 
@@ -929,9 +1012,17 @@
     const sog = Number(stint.sog || 0);
     const ga = Number(stint.ga || 0);
     if (eventName === "savePlus") stint.sog = sog + 1;
-    if (eventName === "goalPlus") { stint.sog = sog + 1; stint.ga = ga + 1; }
+    if (eventName === "goalPlus") {
+      stint.sog = sog + 1;
+      stint.ga = ga + 1;
+      createLessonGoalEvent(stint);
+    }
     if (eventName === "saveMinus" && sog - ga > 0) stint.sog = sog - 1;
-    if (eventName === "goalMinus" && ga > 0) { stint.sog = Math.max(0, sog - 1); stint.ga = ga - 1; }
+    if (eventName === "goalMinus" && ga > 0) {
+      stint.sog = Math.max(0, sog - 1);
+      stint.ga = ga - 1;
+      removeLastLessonGoalEvent(stint);
+    }
   }
 
   lessonSetupForm.addEventListener("submit", event => {
@@ -953,6 +1044,7 @@
       participantGoalieIds: selectedIds,
       lessonGoalies: selectedGoalies.map(goalie => ({ goalieId: goalie.id, goalieName: goalie.name })),
       lessonStints: [],
+      lessonGoalEvents: [],
       activeLessonGoalies: { A: "", B: "" }
     };
     saveCurrentGame();
@@ -983,6 +1075,42 @@
     const stint = currentGame.lessonStints.find(item => item.id === button.dataset.lessonStint);
     updateLessonStint(stint, button.dataset.stintEvent);
     renderLessonRecord();
+  });
+
+  function updateLessonGoalAnalysisField(event) {
+    const item = event.target.closest("[data-lesson-goal-id]");
+    const field = event.target.dataset.lessonGoalField;
+    if (!item || !field || !currentGame) return;
+
+    const goal = (currentGame.lessonGoalEvents || []).find(entry => entry.id === item.dataset.lessonGoalId);
+    if (!goal) return;
+
+    goal[field] = event.target.value;
+    if (field === "causePrimary") {
+      goal.attackType = "";
+      goal.finishType = "";
+      renderLessonGoalAnalysis();
+    }
+    saveCurrentGame();
+  }
+
+  lessonGoalAnalysis.addEventListener("input", updateLessonGoalAnalysisField);
+  lessonGoalAnalysis.addEventListener("change", updateLessonGoalAnalysisField);
+
+  lessonGoalAnalysis.addEventListener("click", event => {
+    const button = event.target.closest("[data-delete-lesson-goal]");
+    if (!button || !currentGame) return;
+    const id = button.dataset.deleteLessonGoal;
+    const goal = (currentGame.lessonGoalEvents || []).find(entry => entry.id === id);
+    if (!goal) return;
+    const stint = currentGame.lessonStints.find(item => item.id === goal.stintId);
+    if (stint && Number(stint.ga || 0) > 0) {
+      stint.ga = Math.max(0, Number(stint.ga || 0) - 1);
+      stint.sog = Math.max(stint.ga, Number(stint.sog || 0) - 1);
+    }
+    currentGame.lessonGoalEvents = currentGame.lessonGoalEvents.filter(entry => entry.id !== id);
+    renderLessonRecord();
+    saveCurrentGame();
   });
 
   function finishLessonRecord() {
@@ -1297,40 +1425,32 @@
     return `
       <svg class="goal-svg" viewBox="0 0 600 360" aria-hidden="true">
         <defs>
-          <linearGradient id="iceGrad26" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id="iceGrad28" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stop-color="#ffffff"/>
             <stop offset="100%" stop-color="#eaf2f9"/>
           </linearGradient>
-          <pattern id="netPattern26" width="26" height="26" patternUnits="userSpaceOnUse">
+          <pattern id="netPattern28" width="26" height="26" patternUnits="userSpaceOnUse">
             <path d="M 0 0 L 26 26 M 26 0 L 0 26" stroke="#b9c5d2" stroke-width="2"/>
           </pattern>
         </defs>
-        <rect x="0" y="0" width="600" height="360" fill="url(#iceGrad26)"/>
+        <rect x="0" y="0" width="600" height="360" fill="url(#iceGrad28)"/>
         <ellipse cx="300" cy="320" rx="250" ry="24" fill="#cfd9e4" opacity=".42"/>
-        <path d="M80 308 L105 72 Q300 22 495 72 L520 308" fill="none" stroke="#d62424" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M105 80 Q300 38 495 80 L495 308 L105 308 Z" fill="url(#netPattern26)" opacity=".88"/>
-        <line x1="105" y1="308" x2="495" y2="308" stroke="#d62424" stroke-width="22" stroke-linecap="round"/>
-        <path d="M105 80 L145 44 M495 80 L455 44" stroke="#d62424" stroke-width="12" stroke-linecap="round"/>
-        <g class="goalie-silhouette" opacity=".97">
-          <ellipse cx="300" cy="305" rx="110" ry="15" fill="#9fafbf" opacity=".38"/>
-          <circle cx="300" cy="92" r="28" fill="#eceff3" stroke="#7f8e9d" stroke-width="3"/>
-          <path d="M282 80 h36 v24 h-36z" fill="#d62626" opacity=".75"/>
-          <path d="M255 120 Q300 105 345 120 L353 195 Q300 212 247 195 Z" fill="#171717"/>
-          <path d="M248 122 L216 185 L240 196 L268 138 Z" fill="#101010"/>
-          <path d="M352 122 L384 185 L360 196 L332 138 Z" fill="#101010"/>
-          <ellipse cx="215" cy="186" rx="20" ry="16" fill="#df2e2e"/>
-          <ellipse cx="382" cy="182" rx="24" ry="18" fill="#df2e2e"/>
-          <path d="M248 203 L223 286 L262 300 L282 208 Z" fill="#ffffff" stroke="#a9b5c1" stroke-width="2"/>
-          <path d="M352 203 L318 208 L338 300 L377 286 Z" fill="#ffffff" stroke="#a9b5c1" stroke-width="2"/>
-          <path d="M261 201 L242 289 L268 296 L288 206 Z" fill="#d62626" opacity=".9"/>
-          <path d="M339 201 L312 206 L332 296 L357 289 Z" fill="#d62626" opacity=".9"/>
-          <path d="M288 129 v163" stroke="#ffffff" stroke-width="4" opacity=".8"/>
-          <path d="M312 129 v163" stroke="#ffffff" stroke-width="4" opacity=".8"/>
-          <path d="M310 210 L404 212 L408 220 L311 226 Z" fill="#f2f2f2" stroke="#9aa7b5" stroke-width="2"/>
-          <path d="M390 212 h24" stroke="#c98b3a" stroke-width="7" stroke-linecap="round"/>
-          <path d="M300 215 v65" stroke="#1d1d1d" stroke-width="8" stroke-linecap="round"/>
-        </g>
-        <text x="300" y="344" text-anchor="middle" fill="#6b7788" font-size="18" font-weight="700">골대 안쪽을 터치하세요</text>
+        <path d="M80 310 L105 72 Q300 22 495 72 L520 310"
+              fill="none" stroke="#d62424" stroke-width="22"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M105 80 Q300 38 495 80 L495 310 L105 310 Z"
+              fill="url(#netPattern28)" opacity=".9"/>
+        <line x1="105" y1="310" x2="495" y2="310"
+              stroke="#d62424" stroke-width="22" stroke-linecap="round"/>
+        <path d="M105 80 L145 44 M495 80 L455 44"
+              stroke="#d62424" stroke-width="12" stroke-linecap="round"/>
+        <line x1="235" y1="70" x2="235" y2="310" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
+        <line x1="365" y1="70" x2="365" y2="310" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
+        <line x1="105" y1="150" x2="495" y2="150" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
+        <line x1="105" y1="230" x2="495" y2="230" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
+        <text x="300" y="344" text-anchor="middle" fill="#6b7788" font-size="18" font-weight="700">
+          골대 안쪽을 터치하세요
+        </text>
       </svg>
     `;
   }
@@ -2697,11 +2817,19 @@
         return `<div class="lesson-detail-goalie"><strong>${escapeHtml(goalie.goalieName)}</strong><span>SOG ${stats.sog} · GA ${stats.ga} · SAVE ${stats.save}</span><small>A골대 ${stats.byNet.A.sog}/${stats.byNet.A.ga} · B골대 ${stats.byNet.B.sog}/${stats.byNet.B.ga}</small></div>`;
       }).join("");
       const stints = (game.lessonStints || []).map((stint, index) => `<div class="lesson-detail-stint"><strong>${index + 1}. ${escapeHtml(stint.goalieName)} · ${stint.net}골대</strong><span>SOG ${stint.sog} · GA ${stint.ga} · ${saveRateText(stint.sog, stint.ga)}</span></div>`).join("");
+      const lessonGoalRows = (game.lessonGoalEvents || []).map((goal, index) => `
+        <div class="lesson-detail-stint">
+          <strong>${index + 1}. ${escapeHtml(goal.goalieName)} · ${escapeHtml(goal.net)}골대 실점</strong>
+          <span>${escapeHtml([goal.causePrimary, goal.attackType, goal.finishType].filter(Boolean).join(" / ") || "분석 미입력")}</span>
+          ${goal.memo ? `<small>${escapeHtml(goal.memo)}</small>` : ""}
+        </div>
+      `).join("");
       document.getElementById("gameDetailContent").innerHTML = `
         <section class="detail-card"><div class="list-card-badges"><span class="game-type-chip type-game_lesson">게임 레슨</span><span class="folder-chip">📁 ${escapeHtml(gameGroupName(game))}</span></div><h3>${escapeHtml(game.title || "게임 레슨")}</h3><p>${escapeHtml(game.date || "-")} · ${escapeHtml(game.rink || "-")}</p></section>
         <section class="lesson-score-card detail-score"><div class="lesson-score-team"><span>${escapeHtml(game.teamAName || "A")}</span><strong>${score.A}</strong></div><div class="lesson-score-vs">FINAL</div><div class="lesson-score-team"><span>${escapeHtml(game.teamBName || "B")}</span><strong>${score.B}</strong></div></section>
         <section class="detail-card"><h3>🥅 골리별 기록</h3><div class="lesson-detail-goalies">${goalieRows}</div></section>
-        <section class="detail-card"><h3>🔄 로테이션 기록</h3><div class="lesson-detail-stints">${stints || '<div class="empty-analysis">기록 없음</div>'}</div></section>`;
+        <section class="detail-card"><h3>🔄 로테이션 기록</h3><div class="lesson-detail-stints">${stints || '<div class="empty-analysis">기록 없음</div>'}</div></section>
+        <section class="detail-card"><h3>📋 게임레슨 실점 분석</h3><div class="lesson-detail-stints">${lessonGoalRows || '<div class="empty-analysis">기록 없음</div>'}</div></section>`;
       return;
     }
     const totals = gameTotals(game);
@@ -3086,7 +3214,7 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
-        await navigator.serviceWorker.register("./sw.js?v=27");
+        await navigator.serviceWorker.register("./sw.js?v=28");
         await navigator.serviceWorker.ready;
         serviceWorkerReady = true;
         updateConnectionStatus();
@@ -3482,7 +3610,8 @@ ${escapeHtml(goal.body || '')}"></div>`)
           (game.lessonGoalies || []).forEach(goalie => {
             if (selected !== "all" && goalie.goalieName !== selected) return;
             const totals = lessonGoalieStats(game, goalie.goalieId);
-            appearances.push({ game, goalieName: goalie.goalieName, totals, goals: [], shootout: { count: 0, saved: 0, goals: 0 } });
+            const lessonGoals = (game.lessonGoalEvents || []).filter(goal => goal.goalieId === goalie.goalieId);
+            appearances.push({ game, goalieName: goalie.goalieName, totals, goals: lessonGoals, shootout: { count: 0, saved: 0, goals: 0 } });
           });
           return;
         }
