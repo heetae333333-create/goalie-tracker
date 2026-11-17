@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Goalie Tracker">
 
-  <link rel="manifest" href="manifest.json?v=22">
+  <link rel="manifest" href="manifest.json?v=24">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
   <div class="app-shell">
@@ -25,7 +25,7 @@
         <div class="hero-icon">🏒</div>
         <h1>Goalie Tracker Pro</h1>
         <p>아이스하키 골리 기록 시스템</p>
-        <div class="build-version">v2.2</div>
+        <div class="build-version">v2.4</div>
       </header>
 
       <main class="menu">
@@ -94,6 +94,7 @@
       </header>
 
       <main class="content">
+        <div id="newGameTypeBadge" class="game-type-banner">실제 경기</div>
         <form id="newGameForm" class="panel">
           <label>
             날짜
@@ -122,6 +123,11 @@
               <option value="원정">🚌 원정</option>
               <option value="중립">⚪ 중립</option>
             </select>
+          </label>
+
+          <label>
+            그룹 / 폴더
+            <input id="gameGroup" type="text" maxlength="40" list="groupOptions" placeholder="예: 트라이던트 U12 / 개인 게임레슨">
           </label>
 
           <label>
@@ -351,6 +357,69 @@
       </main>
     </section>
 
+
+    <!-- 게임 레슨 설정 화면 -->
+    <section id="lessonSetupScreen" class="screen">
+      <header class="topbar">
+        <button id="backFromLessonSetup" class="back-btn" type="button">←</button>
+        <div>
+          <h2>🎮 게임 레슨</h2>
+          <p>참여 골리를 선택하고 양쪽 골대를 자유롭게 로테이션합니다.</p>
+        </div>
+      </header>
+      <main class="content">
+        <form id="lessonSetupForm" class="panel">
+          <label>날짜<input id="lessonDate" type="date" required></label>
+          <label>게임 / 레슨명<input id="lessonTitle" type="text" maxlength="50" placeholder="예: 골리 게임레슨 / 자체 경기"></label>
+          <label>경기장<input id="lessonRink" type="text" maxlength="50" placeholder="경기장 이름"></label>
+          <label>그룹 / 폴더<input id="lessonGroup" type="text" maxlength="40" list="groupOptions" placeholder="예: 개인 게임레슨 / 트라이던트"></label>
+          <div class="lesson-team-name-grid">
+            <label>A팀 이름<input id="lessonTeamA" type="text" maxlength="30" value="RED"></label>
+            <label>B팀 이름<input id="lessonTeamB" type="text" maxlength="30" value="NAVY"></label>
+          </div>
+          <div class="lesson-participant-block">
+            <h3>🥅 참여 골리</h3>
+            <p>3명 이상도 가능합니다. 골리는 어느 팀 골대든 들어갈 수 있습니다.</p>
+            <div id="lessonGoalieChoices" class="lesson-goalie-choices"></div>
+          </div>
+          <button class="primary-btn start-btn" type="submit">🎮 게임 레슨 시작</button>
+        </form>
+      </main>
+    </section>
+
+    <!-- 게임 레슨 기록 화면 -->
+    <section id="lessonRecordScreen" class="screen">
+      <header class="topbar sticky">
+        <button id="backFromLessonRecord" class="back-btn" type="button">←</button>
+        <div class="record-heading">
+          <h2 id="lessonRecordTitle">🎮 게임 레슨</h2>
+          <p id="lessonRecordSubtitle"></p>
+        </div>
+      </header>
+      <main class="content lesson-record-content">
+        <section class="lesson-score-card">
+          <div class="lesson-score-team"><span id="lessonTeamALabel">RED</span><strong id="lessonScoreA">0</strong></div>
+          <div class="lesson-score-vs">SCORE</div>
+          <div class="lesson-score-team"><span id="lessonTeamBLabel">NAVY</span><strong id="lessonScoreB">0</strong></div>
+        </section>
+        <div id="lessonNetPanels" class="lesson-net-grid"></div>
+        <section class="detail-card">
+          <h3>🔄 골리 로테이션 / 수정</h3>
+          <p class="detail-helper">이전 교대 기록도 SAVE·GOAL을 바로 수정할 수 있습니다.</p>
+          <div id="lessonStintHistory" class="lesson-stint-history"></div>
+        </section>
+        <section class="detail-card">
+          <h3>📊 골리별 게임레슨 기록</h3>
+          <div id="lessonGoalieTotals" class="lesson-goalie-totals"></div>
+        </section>
+        <p class="autosave-text">입력할 때마다 자동 저장됩니다.</p>
+        <div class="button-stack">
+          <button id="finishLessonBtn" class="success-btn" type="button">✅ 게임 레슨 완료 및 저장</button>
+          <button id="discardLessonBtn" class="danger-btn" type="button">🗑 현재 게임레슨 초기화</button>
+        </div>
+      </main>
+    </section>
+
     <!-- 경기 목록 화면 -->
     <section id="gamesScreen" class="screen">
       <header class="topbar">
@@ -362,7 +431,22 @@
       </header>
 
       <main class="content">
-        <div id="gamesList" class="card-list"></div>
+        <section class="panel record-filter-panel">
+          <label>
+            경기 유형
+            <select id="gamesTypeFilter">
+              <option value="all">전체</option>
+              <option value="official">실제 경기</option>
+              <option value="practice">연습 경기</option>
+              <option value="game_lesson">게임 레슨</option>
+            </select>
+          </label>
+          <label>
+            그룹 / 폴더
+            <select id="gamesGroupFilter"><option value="all">전체 폴더</option></select>
+          </label>
+        </section>
+        <div id="gamesList" class="card-list grouped-game-list"></div>
       </main>
     </section>
 
@@ -378,6 +462,14 @@
 
       <main class="content">
         <div id="gameDetailContent"></div>
+
+        <section class="detail-card folder-move-card">
+          <h3>📁 그룹 / 폴더</h3>
+          <div class="folder-move-row">
+            <select id="detailGroupSelect"></select>
+            <button id="moveGameGroupBtn" class="secondary-btn" type="button">폴더 이동</button>
+          </div>
+        </section>
 
         <div class="button-stack">
           <button id="editSavedGameBtn" class="success-btn" type="button">✏ 저장 경기 수정</button>
@@ -544,10 +636,23 @@
       </header>
 
       <main class="content">
-        <section class="panel stats-filter-panel">
+        <section class="panel stats-filter-panel advanced-stats-filter">
           <label>
             골리 선택
             <select id="statsGoalieSelect"></select>
+          </label>
+          <label>
+            경기 유형
+            <select id="statsGameTypeSelect">
+              <option value="all">전체</option>
+              <option value="official">실제 경기</option>
+              <option value="practice">연습 경기</option>
+              <option value="game_lesson">게임 레슨</option>
+            </select>
+          </label>
+          <label>
+            그룹 / 폴더
+            <select id="statsGroupSelect"><option value="all">전체 폴더</option></select>
           </label>
         </section>
 
@@ -630,8 +735,27 @@
 
   </div>
 
+
+  <datalist id="groupOptions"></datalist>
+  <div id="gameTypeModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="game-type-modal">
+      <h2>어떤 기록을 시작할까요?</h2>
+      <p>기록 방식에 맞게 선택하세요.</p>
+      <button type="button" class="game-type-choice official" data-new-game-type="official">
+        <strong>🏆 실제 경기</strong><span>정식 시합 기록 · 기존 방식</span>
+      </button>
+      <button type="button" class="game-type-choice practice" data-new-game-type="practice">
+        <strong>🧪 연습 경기</strong><span>연습/자체 경기 · 기존 방식</span>
+      </button>
+      <button type="button" class="game-type-choice lesson" data-new-game-type="game_lesson">
+        <strong>🎮 게임 레슨</strong><span>양쪽 골대 + 여러 골리 로테이션 기록</span>
+      </button>
+      <button id="cancelGameTypeModal" type="button" class="secondary-btn">취소</button>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

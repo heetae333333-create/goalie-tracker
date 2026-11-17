@@ -1968,3 +1968,39 @@ button:disabled {
   font-size: 11px;
   font-weight: 800;
 }
+
+
+/* v2.4 game type / folders / game lesson */
+.modal-backdrop { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(10,24,44,.58); }
+.game-type-modal { width:min(520px,100%); padding:20px; background:#fff; border-radius:20px; box-shadow:0 24px 60px rgba(0,0,0,.25); }
+.game-type-modal h2 { margin:0 0 6px; }
+.game-type-modal > p { margin:0 0 16px; color:var(--muted); }
+.game-type-choice { display:flex; flex-direction:column; gap:4px; width:100%; margin:9px 0; padding:16px; text-align:left; background:#fff; border:2px solid var(--border); border-radius:14px; cursor:pointer; }
+.game-type-choice strong { font-size:18px; } .game-type-choice span { color:var(--muted); font-size:12px; }
+.game-type-choice.official { border-color:#b9d5f5; } .game-type-choice.practice { border-color:#cbd9c6; } .game-type-choice.lesson { border-color:#e4c9f0; background:#fcf8ff; }
+.game-type-banner { margin:0 0 10px; padding:10px 12px; color:var(--blue-dark); background:var(--blue-soft); border-radius:11px; text-align:center; font-weight:900; }
+.record-filter-panel, .advanced-stats-filter { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.advanced-stats-filter { grid-template-columns:repeat(3,1fr); }
+.record-filter-panel label, .advanced-stats-filter label { margin-bottom:0; }
+.list-card-badges { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.game-type-chip, .folder-chip { display:inline-block; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:900; }
+.game-type-chip { background:#eaf3ff; color:#084a9b; } .type-practice { background:#edf7ea; color:#34702e; } .type-game_lesson { background:#f5eafa; color:#74358b; } .folder-chip { background:#f1f3f6; color:#5b6572; }
+.record-folder-section { margin-bottom:18px; } .record-folder-title { display:flex; justify-content:space-between; align-items:center; margin:0 2px 8px; font-weight:900; } .record-folder-title small { color:var(--muted); } .record-folder-cards { display:grid; gap:12px; }
+.lesson-team-name-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.lesson-participant-block { margin:8px 0 18px; padding:12px; background:#f7f9fc; border:1px solid var(--border); border-radius:13px; } .lesson-participant-block h3 { margin:0 0 4px; } .lesson-participant-block p { margin:0 0 10px; color:var(--muted); font-size:12px; }
+.lesson-goalie-choices { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; } .lesson-goalie-choice { display:flex; align-items:center; gap:8px; margin:0; padding:10px; background:#fff; border:1px solid var(--border); border-radius:10px; } .lesson-goalie-choice input { width:22px; min-height:22px; margin:0; }
+.lesson-score-card { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; margin-bottom:14px; padding:14px; color:white; background:#243b62; border-radius:17px; box-shadow:var(--shadow); } .lesson-score-team { text-align:center; } .lesson-score-team span, .lesson-score-team strong { display:block; } .lesson-score-team span { font-size:13px; font-weight:900; } .lesson-score-team strong { margin-top:4px; font-size:42px; } .lesson-score-vs { opacity:.72; font-size:12px; font-weight:900; }
+.lesson-net-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; } .lesson-net-card { padding:13px; background:#fff; border:2px solid #cbd9e6; border-radius:16px; } .lesson-net-card.net-a { border-color:#e4b4b4; } .lesson-net-card.net-b { border-color:#b5cce8; }
+.lesson-net-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; } .lesson-net-head small, .lesson-net-head strong { display:block; } .lesson-net-head strong { margin-top:3px; font-size:19px; } .lesson-net-head > span { color:var(--muted); font-size:11px; text-align:right; }
+.lesson-switch-line { display:grid; grid-template-columns:1fr auto; gap:7px; align-items:end; margin-top:10px; } .lesson-switch-line select { min-height:44px; margin:0; font-size:14px; } .compact-btn { width:auto; min-height:44px; padding:8px 12px; font-size:13px; }
+.lesson-event-buttons { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; } .lesson-event { min-height:54px; border:0; border-radius:12px; color:#fff; font-size:16px; font-weight:900; } .lesson-event.save { background:#16744c; } .lesson-event.goal { background:#c63838; }
+.lesson-undo-buttons { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:6px; } .lesson-undo-buttons button { min-height:34px; background:#edf1f5; border:0; border-radius:9px; color:#5d6876; font-size:11px; font-weight:900; } .lesson-net-help { margin:8px 0 0; color:var(--muted); font-size:11px; }
+.lesson-stint-history, .lesson-goalie-totals { display:grid; gap:8px; } .lesson-stint-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:10px; background:#f7f9fc; border:1px solid var(--border); border-radius:11px; } .lesson-stint-row.active { border-color:var(--blue); background:#edf5ff; } .lesson-stint-main strong, .lesson-stint-main span { display:block; } .lesson-stint-main span { margin-top:3px; color:var(--muted); font-size:11px; } .lesson-stint-edit { display:grid; grid-template-columns:repeat(4,34px); gap:4px; } .lesson-stint-edit button { width:34px; height:32px; border:0; border-radius:8px; background:#e8edf3; font-size:10px; font-weight:900; }
+.lesson-goalie-total-row { display:grid; grid-template-columns:1fr auto; gap:4px 10px; padding:11px; background:#f7f9fc; border-radius:11px; } .lesson-goalie-total-row span { display:block; margin-top:3px; color:var(--muted); font-size:11px; } .lesson-goalie-total-row small { grid-column:1 / -1; color:#627184; } .lesson-save-rate { color:var(--blue-dark); font-size:22px; }
+.lesson-detail-goalies, .lesson-detail-stints { display:grid; gap:8px; } .lesson-detail-goalie, .lesson-detail-stint { display:grid; gap:3px; padding:10px; background:#f7f9fc; border-radius:10px; } .lesson-detail-goalie span, .lesson-detail-stint span, .lesson-detail-goalie small { color:var(--muted); font-size:12px; } .detail-score { margin:0 0 14px; }
+@media (max-width:680px) { .advanced-stats-filter, .record-filter-panel, .lesson-net-grid, .lesson-team-name-grid, .lesson-goalie-choices { grid-template-columns:1fr; } .lesson-stint-row { grid-template-columns:1fr; } }
+
+.folder-move-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end; }
+.folder-move-row select { margin:0; min-height:46px; }
+.folder-move-row .secondary-btn { width:auto; min-height:46px; padding:10px 14px; font-size:13px; }
+@media (max-width:520px) { .folder-move-row { grid-template-columns:1fr; } .folder-move-row .secondary-btn { width:100%; } }

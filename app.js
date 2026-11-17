@@ -13,6 +13,8 @@
     home: document.getElementById("homeScreen"),
     goalies: document.getElementById("goalieScreen"),
     newGame: document.getElementById("newGameScreen"),
+    lessonSetup: document.getElementById("lessonSetupScreen"),
+    lessonRecord: document.getElementById("lessonRecordScreen"),
     record: document.getElementById("recordScreen"),
     games: document.getElementById("gamesScreen"),
     detail: document.getElementById("gameDetailScreen"),
@@ -33,6 +35,17 @@
   const shootoutSummary = document.getElementById("shootoutSummary");
   const shootoutList = document.getElementById("shootoutList");
   const statsGoalieSelect = document.getElementById("statsGoalieSelect");
+  const statsGameTypeSelect = document.getElementById("statsGameTypeSelect");
+  const statsGroupSelect = document.getElementById("statsGroupSelect");
+  const gamesTypeFilter = document.getElementById("gamesTypeFilter");
+  const gamesGroupFilter = document.getElementById("gamesGroupFilter");
+  const detailGroupSelect = document.getElementById("detailGroupSelect");
+  const gameTypeModal = document.getElementById("gameTypeModal");
+  const lessonSetupForm = document.getElementById("lessonSetupForm");
+  const lessonGoalieChoices = document.getElementById("lessonGoalieChoices");
+  const lessonNetPanels = document.getElementById("lessonNetPanels");
+  const lessonStintHistory = document.getElementById("lessonStintHistory");
+  const lessonGoalieTotals = document.getElementById("lessonGoalieTotals");
   const editGameInfoPanel = document.getElementById("editGameInfoPanel");
   const editGoalieSelect = document.getElementById("editGoalieSelect");
   const activeGoalieSelect = document.getElementById("activeGoalieSelect");
@@ -52,6 +65,7 @@
   let deferredInstallPrompt = null;
   let serviceWorkerReady = false;
   let toastTimer = null;
+  let pendingGameType = "official";
 
   function readJson(key, fallback) {
     try {
@@ -97,6 +111,60 @@
     const now = new Date();
     const offset = now.getTimezoneOffset();
     return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
+  }
+
+  const GAME_TYPE_LABELS = {
+    official: "실제 경기",
+    practice: "연습 경기",
+    game_lesson: "게임 레슨"
+  };
+
+  function normalizedGameType(game) {
+    return game?.gameType || "official";
+  }
+
+  function gameTypeLabel(gameOrType) {
+    const type = typeof gameOrType === "string" ? gameOrType : normalizedGameType(gameOrType);
+    return GAME_TYPE_LABELS[type] || "실제 경기";
+  }
+
+  function gameGroupName(game) {
+    return String(game?.groupName || "").trim() || "미분류";
+  }
+
+  function allGroupNames() {
+    return [...new Set(savedGames.map(gameGroupName).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "ko"));
+  }
+
+  function refreshGroupOptions() {
+    const groups = allGroupNames();
+    const datalist = document.getElementById("groupOptions");
+    if (datalist) {
+      datalist.innerHTML = groups
+        .filter(name => name !== "미분류")
+        .map(name => `<option value="${escapeHtml(name)}"></option>`)
+        .join("");
+    }
+
+    [gamesGroupFilter, statsGroupSelect].forEach(select => {
+      if (!select) return;
+      const previous = select.value || "all";
+      select.innerHTML = `
+        <option value="all">전체 폴더</option>
+        ${groups.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}
+      `;
+      if ([...select.options].some(option => option.value === previous)) select.value = previous;
+    });
+  }
+
+  function refreshDetailGroupSelect(game) {
+    if (!detailGroupSelect || !game) return;
+    const current = gameGroupName(game);
+    const groups = allGroupNames();
+    if (!groups.includes(current)) groups.push(current);
+    detailGroupSelect.innerHTML = groups.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("") + `<option value="__new__">＋ 새 폴더 만들기</option>`;
+    detailGroupSelect.value = current;
   }
 
   function createEmptyPeriods() {
@@ -553,19 +621,62 @@
   // 새 경기
   // ─────────────────────────────
 
-  function openNewGame() {
+  function showGameTypePicker() {
+    gameTypeModal.classList.remove("hidden");
+  }
+
+  function hideGameTypePicker() {
+    gameTypeModal.classList.add("hidden");
+  }
+
+  function openNewGame(type = "official") {
+    pendingGameType = type;
     editingSavedGameId = null;
     document.getElementById("finishGameBtn").textContent = "✅ 경기 완료 및 목록 저장";
     document.getElementById("discardGameBtn").textContent = "🗑 현재 경기 초기화";
     refreshGoalieSelect();
+    refreshGroupOptions();
 
     document.getElementById("gameDate").value = todayLocal();
     document.getElementById("opponentTeam").value = "";
     document.getElementById("rinkName").value = "";
     document.getElementById("tournamentName").value = "";
     document.getElementById("homeAway").value = "홈";
+    document.getElementById("gameGroup").value = "";
+    document.getElementById("newGameTypeBadge").textContent = gameTypeLabel(type);
 
     showScreen("newGame");
+  }
+
+  function renderLessonGoalieChoices() {
+    lessonGoalieChoices.innerHTML = goalies.length
+      ? goalies.map(goalie => `
+          <label class="lesson-goalie-choice">
+            <input type="checkbox" value="${escapeHtml(goalie.id)}">
+            <span><strong>${escapeHtml(goalie.name)}</strong>${goalie.number ? ` #${escapeHtml(goalie.number)}` : ""}</span>
+          </label>
+        `).join("")
+      : `<div class="empty-analysis">등록된 골리가 없습니다.</div>`;
+  }
+
+  function openLessonSetup() {
+    if (goalies.length < 2) {
+      alert("게임 레슨은 최소 2명의 골리가 필요합니다. 골리를 먼저 등록하세요.");
+      renderGoalies();
+      showScreen("goalies");
+      return;
+    }
+
+    editingSavedGameId = null;
+    refreshGroupOptions();
+    document.getElementById("lessonDate").value = todayLocal();
+    document.getElementById("lessonTitle").value = "게임 레슨";
+    document.getElementById("lessonRink").value = "";
+    document.getElementById("lessonGroup").value = "";
+    document.getElementById("lessonTeamA").value = "RED";
+    document.getElementById("lessonTeamB").value = "NAVY";
+    renderLessonGoalieChoices();
+    showScreen("lessonSetup");
   }
 
   document.getElementById("newGameForm").addEventListener("submit", event => {
@@ -596,6 +707,8 @@
       status: "draft",
       createdAt: new Date().toISOString(),
       date: document.getElementById("gameDate").value || todayLocal(),
+      gameType: pendingGameType || "official",
+      groupName: document.getElementById("gameGroup").value.trim(),
       opponent,
       rink: document.getElementById("rinkName").value.trim(),
       tournament: document.getElementById("tournamentName").value.trim(),
@@ -636,6 +749,272 @@
     saveCurrentGame();
     renderRecordScreen(false);
     showScreen("record");
+  });
+
+  // ─────────────────────────────
+  // 게임 레슨 기록
+  // ─────────────────────────────
+
+  function ensureLessonGame(game) {
+    if (!game) return game;
+    if (!Array.isArray(game.lessonGoalies)) game.lessonGoalies = [];
+    if (!Array.isArray(game.lessonStints)) game.lessonStints = [];
+    if (!game.activeLessonGoalies) game.activeLessonGoalies = { A: "", B: "" };
+    if (!Array.isArray(game.participantGoalieIds)) {
+      game.participantGoalieIds = game.lessonGoalies.map(item => item.goalieId);
+    }
+    return game;
+  }
+
+  function lessonGoalieEntry(game, goalieId) {
+    ensureLessonGame(game);
+    return game.lessonGoalies.find(item => item.goalieId === goalieId) || null;
+  }
+
+  function activeLessonStint(game, net) {
+    ensureLessonGame(game);
+    const id = game.activeLessonGoalies?.[net];
+    return game.lessonStints.find(stint => stint.id === id) || null;
+  }
+
+  function lessonStintSaves(stint) {
+    return Math.max(0, Number(stint?.sog || 0) - Number(stint?.ga || 0));
+  }
+
+  function lessonGoalieStats(game, goalieId) {
+    const stints = (game.lessonStints || []).filter(stint => stint.goalieId === goalieId);
+    const sog = stints.reduce((sum, stint) => sum + Number(stint.sog || 0), 0);
+    const ga = stints.reduce((sum, stint) => sum + Number(stint.ga || 0), 0);
+    const byNet = { A: { sog: 0, ga: 0 }, B: { sog: 0, ga: 0 } };
+    stints.forEach(stint => {
+      if (!byNet[stint.net]) return;
+      byNet[stint.net].sog += Number(stint.sog || 0);
+      byNet[stint.net].ga += Number(stint.ga || 0);
+    });
+    return { sog, ga, saves: Math.max(0, sog - ga), save: saveRateText(sog, ga), byNet, stints };
+  }
+
+  function lessonScore(game) {
+    ensureLessonGame(game);
+    const scoreA = game.lessonStints
+      .filter(stint => stint.net === "B")
+      .reduce((sum, stint) => sum + Number(stint.ga || 0), 0);
+    const scoreB = game.lessonStints
+      .filter(stint => stint.net === "A")
+      .reduce((sum, stint) => sum + Number(stint.ga || 0), 0);
+    return { A: scoreA, B: scoreB };
+  }
+
+  function participantGoalies(game) {
+    return (game.participantGoalieIds || [])
+      .map(id => goalies.find(goalie => goalie.id === id) || game.lessonGoalies.find(item => item.goalieId === id))
+      .filter(Boolean);
+  }
+
+  function renderLessonRecord() {
+    if (!currentGame || normalizedGameType(currentGame) !== "game_lesson") return;
+    ensureLessonGame(currentGame);
+    const score = lessonScore(currentGame);
+    const teamA = currentGame.teamAName || "RED";
+    const teamB = currentGame.teamBName || "NAVY";
+
+    document.getElementById("lessonRecordTitle").textContent = `🎮 ${currentGame.title || "게임 레슨"}`;
+    document.getElementById("lessonRecordSubtitle").textContent = [currentGame.date, currentGame.rink, gameGroupName(currentGame)].filter(Boolean).join(" · ");
+    document.getElementById("lessonTeamALabel").textContent = teamA;
+    document.getElementById("lessonTeamBLabel").textContent = teamB;
+    document.getElementById("lessonScoreA").textContent = score.A;
+    document.getElementById("lessonScoreB").textContent = score.B;
+
+    const participants = participantGoalies(currentGame);
+    const options = participants.map(goalie => `<option value="${escapeHtml(goalie.id || goalie.goalieId)}">${escapeHtml(goalie.name || goalie.goalieName)}</option>`).join("");
+
+    lessonNetPanels.innerHTML = ["A", "B"].map(net => {
+      const teamName = net === "A" ? teamA : teamB;
+      const attackingTeam = net === "A" ? teamB : teamA;
+      const stint = activeLessonStint(currentGame, net);
+      const currentName = stint?.goalieName || "미선택";
+      const save = stint ? saveRateText(stint.sog, stint.ga) : "—";
+      return `
+        <section class="lesson-net-card net-${net.toLowerCase()}">
+          <div class="lesson-net-head">
+            <div><small>${escapeHtml(teamName)} 골대</small><strong>${escapeHtml(currentName)}</strong></div>
+            <span>${stint ? `SOG ${stint.sog} · GA ${stint.ga} · ${save}` : "골리를 배치하세요"}</span>
+          </div>
+          <div class="lesson-switch-line">
+            <select data-lesson-goalie-select="${net}"><option value="">골리 선택</option>${options}</select>
+            <button type="button" class="secondary-btn compact-btn" data-lesson-switch="${net}">${stint ? "🔄 교체" : "🥅 배치"}</button>
+          </div>
+          <div class="lesson-event-buttons">
+            <button type="button" class="lesson-event save" data-lesson-net="${net}" data-lesson-event="savePlus">🧤 SAVE +</button>
+            <button type="button" class="lesson-event goal" data-lesson-net="${net}" data-lesson-event="goalPlus">🥅 GOAL +</button>
+          </div>
+          <div class="lesson-undo-buttons">
+            <button type="button" data-lesson-net="${net}" data-lesson-event="saveMinus">SAVE −</button>
+            <button type="button" data-lesson-net="${net}" data-lesson-event="goalMinus">GOAL −</button>
+          </div>
+          <p class="lesson-net-help">${escapeHtml(attackingTeam)}의 슈팅을 이 골리에게 기록합니다.</p>
+        </section>
+      `;
+    }).join("");
+
+    if (currentGame.lessonStints.length === 0) {
+      lessonStintHistory.innerHTML = `<div class="empty-analysis">골리를 A/B 골대에 배치하면 교대 이력이 생성됩니다.</div>`;
+    } else {
+      lessonStintHistory.innerHTML = currentGame.lessonStints.map((stint, index) => `
+        <div class="lesson-stint-row ${currentGame.activeLessonGoalies?.[stint.net] === stint.id ? "active" : ""}">
+          <div class="lesson-stint-main">
+            <strong>${index + 1}. ${escapeHtml(stint.goalieName)} · ${stint.net}골대</strong>
+            <span>세이브 ${lessonStintSaves(stint)} · 실점 ${stint.ga} · SOG ${stint.sog} · ${saveRateText(stint.sog, stint.ga)}</span>
+          </div>
+          <div class="lesson-stint-edit">
+            <button type="button" data-lesson-stint="${stint.id}" data-stint-event="savePlus">S+</button>
+            <button type="button" data-lesson-stint="${stint.id}" data-stint-event="saveMinus">S−</button>
+            <button type="button" data-lesson-stint="${stint.id}" data-stint-event="goalPlus">G+</button>
+            <button type="button" data-lesson-stint="${stint.id}" data-stint-event="goalMinus">G−</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    lessonGoalieTotals.innerHTML = currentGame.lessonGoalies.map(goalie => {
+      const stats = lessonGoalieStats(currentGame, goalie.goalieId);
+      return `
+        <div class="lesson-goalie-total-row">
+          <div><strong>${escapeHtml(goalie.goalieName)}</strong><span>전체 SOG ${stats.sog} · GA ${stats.ga}</span></div>
+          <strong class="lesson-save-rate">${stats.save}</strong>
+          <small>A골대 ${stats.byNet.A.sog}/${stats.byNet.A.ga} · B골대 ${stats.byNet.B.sog}/${stats.byNet.B.ga}</small>
+        </div>
+      `;
+    }).join("");
+
+    saveCurrentGame();
+  }
+
+  function switchLessonGoalie(net, goalieId) {
+    if (!goalieId) return showToast("골리를 선택하세요.");
+    const otherNet = net === "A" ? "B" : "A";
+    const other = activeLessonStint(currentGame, otherNet);
+    if (other?.goalieId === goalieId) return showToast("같은 골리는 양쪽 골대에 동시에 들어갈 수 없습니다.");
+    const goalie = currentGame.lessonGoalies.find(item => item.goalieId === goalieId);
+    if (!goalie) return;
+    const current = activeLessonStint(currentGame, net);
+    if (current?.goalieId === goalieId) return showToast("이미 해당 골대에 있는 골리입니다.");
+    if (current) current.endedAt = new Date().toISOString();
+    const stint = {
+      id: `stint_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      net,
+      goalieId: goalie.goalieId,
+      goalieName: goalie.goalieName,
+      sog: 0,
+      ga: 0,
+      startedAt: new Date().toISOString(),
+      endedAt: ""
+    };
+    currentGame.lessonStints.push(stint);
+    currentGame.activeLessonGoalies[net] = stint.id;
+    renderLessonRecord();
+    showToast(`${goalie.goalieName} · ${net}골대 기록 시작`);
+  }
+
+  function updateLessonStint(stint, eventName) {
+    if (!stint) return;
+    const sog = Number(stint.sog || 0);
+    const ga = Number(stint.ga || 0);
+    if (eventName === "savePlus") stint.sog = sog + 1;
+    if (eventName === "goalPlus") { stint.sog = sog + 1; stint.ga = ga + 1; }
+    if (eventName === "saveMinus" && sog - ga > 0) stint.sog = sog - 1;
+    if (eventName === "goalMinus" && ga > 0) { stint.sog = Math.max(0, sog - 1); stint.ga = ga - 1; }
+  }
+
+  lessonSetupForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const selectedIds = [...lessonGoalieChoices.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
+    if (selectedIds.length < 2) return alert("참여 골리를 최소 2명 선택하세요.");
+    const selectedGoalies = selectedIds.map(id => goalies.find(goalie => goalie.id === id)).filter(Boolean);
+    currentGame = {
+      id: `lesson_${Date.now()}`,
+      status: "draft",
+      createdAt: new Date().toISOString(),
+      gameType: "game_lesson",
+      date: document.getElementById("lessonDate").value || todayLocal(),
+      title: document.getElementById("lessonTitle").value.trim() || "게임 레슨",
+      rink: document.getElementById("lessonRink").value.trim(),
+      groupName: document.getElementById("lessonGroup").value.trim(),
+      teamAName: document.getElementById("lessonTeamA").value.trim() || "RED",
+      teamBName: document.getElementById("lessonTeamB").value.trim() || "NAVY",
+      participantGoalieIds: selectedIds,
+      lessonGoalies: selectedGoalies.map(goalie => ({ goalieId: goalie.id, goalieName: goalie.name })),
+      lessonStints: [],
+      activeLessonGoalies: { A: "", B: "" }
+    };
+    saveCurrentGame();
+    renderLessonRecord();
+    showScreen("lessonRecord");
+  });
+
+  lessonNetPanels.addEventListener("click", event => {
+    const switchButton = event.target.closest("[data-lesson-switch]");
+    if (switchButton) {
+      const net = switchButton.dataset.lessonSwitch;
+      const select = lessonNetPanels.querySelector(`[data-lesson-goalie-select="${net}"]`);
+      switchLessonGoalie(net, select?.value || "");
+      return;
+    }
+    const eventButton = event.target.closest("[data-lesson-event]");
+    if (eventButton) {
+      const stint = activeLessonStint(currentGame, eventButton.dataset.lessonNet);
+      if (!stint) return showToast("먼저 해당 골대에 골리를 배치하세요.");
+      updateLessonStint(stint, eventButton.dataset.lessonEvent);
+      renderLessonRecord();
+    }
+  });
+
+  lessonStintHistory.addEventListener("click", event => {
+    const button = event.target.closest("[data-stint-event]");
+    if (!button || !currentGame) return;
+    const stint = currentGame.lessonStints.find(item => item.id === button.dataset.lessonStint);
+    updateLessonStint(stint, button.dataset.stintEvent);
+    renderLessonRecord();
+  });
+
+  function finishLessonRecord() {
+    if (!currentGame || normalizedGameType(currentGame) !== "game_lesson") return;
+    const completed = deepClone(currentGame);
+    completed.status = "completed";
+    completed.completedAt = new Date().toISOString();
+    const index = savedGames.findIndex(game => game.id === completed.id);
+    if (index >= 0) savedGames[index] = completed; else savedGames.push(completed);
+    saveGames();
+    localStorage.removeItem(STORAGE_KEYS.draft);
+    selectedSavedGameId = completed.id;
+    editingSavedGameId = null;
+    currentGame = null;
+    refreshGroupOptions();
+    renderGamesList();
+    const saved = savedGames.find(game => game.id === selectedSavedGameId);
+    if (saved) renderGameDetail(saved);
+    showScreen("detail");
+    showToast("게임 레슨 기록을 저장했습니다.");
+  }
+
+  document.getElementById("finishLessonBtn").addEventListener("click", finishLessonRecord);
+  document.getElementById("discardLessonBtn").addEventListener("click", () => {
+    if (!currentGame) return;
+    if (editingSavedGameId) {
+      const id = editingSavedGameId;
+      editingSavedGameId = null;
+      currentGame = null;
+      localStorage.removeItem(STORAGE_KEYS.draft);
+      selectedSavedGameId = id;
+      const saved = savedGames.find(game => game.id === id);
+      if (saved) renderGameDetail(saved);
+      showScreen("detail");
+      return;
+    }
+    if (!confirm("현재 게임 레슨 기록을 초기화할까요?")) return;
+    localStorage.removeItem(STORAGE_KEYS.draft);
+    currentGame = null;
+    showScreen("home");
   });
 
   // ─────────────────────────────
@@ -937,91 +1316,30 @@
 
   function rinkSvgMarkup() {
     return `
-      <svg class="rink-svg" viewBox="0 0 720 440" aria-hidden="true">
-        <defs>
-          <linearGradient id="rinkIce" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stop-color="#ffffff"/>
-            <stop offset="100%" stop-color="#eef6fc"/>
-          </linearGradient>
-        </defs>
-
-        <rect x="10" y="10" width="700" height="420" rx="74"
-              fill="url(#rinkIce)" stroke="#9eaab5" stroke-width="5"/>
-
-        <!-- 공격 방향: 오른쪽 블루라인에서 왼쪽 골대 -->
-        <line x1="535" y1="12" x2="535" y2="428"
-              stroke="#1f77b4" stroke-width="6" opacity=".95"/>
-
-        <line x1="92" y1="32" x2="92" y2="408"
-              stroke="#d92a2a" stroke-width="4" opacity=".55"/>
-
-        <!-- 골대 -->
-        <path d="M62 188 L94 188 L94 252 L62 252 Q38 220 62 188 Z"
-              fill="#c8def2" stroke="#d92a2a" stroke-width="5"/>
-
-        <!-- 크리즈 -->
-        <path d="M94 175
-                 A70 45 0 0 1 94 265
-                 L94 175 Z"
-              fill="#c8def2" stroke="#d92a2a" stroke-width="3" opacity=".9"/>
-
-        <!-- 페이스오프 서클 -->
-        <circle cx="270" cy="130" r="70"
-                fill="none" stroke="#e69aa4" stroke-width="3"/>
-        <circle cx="270" cy="310" r="70"
-                fill="none" stroke="#e69aa4" stroke-width="3"/>
-
-        <circle cx="270" cy="130" r="5" fill="#d92a2a"/>
-        <circle cx="270" cy="310" r="5" fill="#d92a2a"/>
-
-        <line x1="255" y1="130" x2="285" y2="130" stroke="#d92a2a" stroke-width="2"/>
-        <line x1="270" y1="115" x2="270" y2="145" stroke="#d92a2a" stroke-width="2"/>
-        <line x1="255" y1="310" x2="285" y2="310" stroke="#d92a2a" stroke-width="2"/>
-        <line x1="270" y1="295" x2="270" y2="325" stroke="#d92a2a" stroke-width="2"/>
-
-        <!-- 슬롯 가이드 -->
-        <path d="M100 178 L360 115 L360 325 L100 262 Z"
-              fill="#1b74d115" stroke="#1b74d145" stroke-width="2" stroke-dasharray="8 8"/>
-
-        <text x="615" y="220" text-anchor="middle"
-              fill="#587087" font-size="18" font-weight="800">
-          BLUE LINE
-        </text>
-
-        <text x="405" y="55" text-anchor="middle"
-              fill="#6b7788" font-size="16" font-weight="800">
-          ← 공격 방향
-        </text>
-      </svg>
-    `;
+      <svg class="rink-svg" viewBox="0 0 760 470" aria-hidden="true">
+        <defs><linearGradient id="rinkIce24" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#edf6fd"/></linearGradient></defs>
+        <rect x="10" y="10" width="740" height="450" rx="78" fill="url(#rinkIce24)" stroke="#9eabb7" stroke-width="5"/>
+        <line x1="115" y1="35" x2="115" y2="435" stroke="#db5050" stroke-width="4" opacity=".45"/>
+        <line x1="575" y1="14" x2="575" y2="456" stroke="#2e75c7" stroke-width="6"/>
+        <line x1="115" y1="235" x2="575" y2="235" stroke="#96b5d1" stroke-width="2" stroke-dasharray="8 8" opacity=".5"/>
+        <path d="M115 185 A80 50 0 0 1 115 285" fill="#d3e8fb" stroke="#db5050" stroke-width="3"/><line x1="115" y1="185" x2="115" y2="285" stroke="#db5050" stroke-width="3"/>
+        <path d="M78 196 L115 196 L115 274 L78 274 Q52 235 78 196 Z" fill="#e8f2fc" stroke="#db2c2c" stroke-width="5"/>
+        <path d="M115 135 L210 162 L210 308 L115 335" fill="none" stroke="#c75858" stroke-width="2.5" opacity=".8"/>
+        <circle cx="275" cy="145" r="72" fill="none" stroke="#e4a1ab" stroke-width="3"/><circle cx="275" cy="325" r="72" fill="none" stroke="#e4a1ab" stroke-width="3"/>
+        <circle cx="275" cy="145" r="5.5" fill="#d92a2a"/><circle cx="275" cy="325" r="5.5" fill="#d92a2a"/>
+        <line x1="258" y1="145" x2="292" y2="145" stroke="#d92a2a" stroke-width="2"/><line x1="275" y1="128" x2="275" y2="162" stroke="#d92a2a" stroke-width="2"/><line x1="258" y1="325" x2="292" y2="325" stroke="#d92a2a" stroke-width="2"/><line x1="275" y1="308" x2="275" y2="342" stroke="#d92a2a" stroke-width="2"/>
+        <path d="M115 176 L365 126 L430 235 L365 344 L115 294" fill="#1b74d112" stroke="#1b74d145" stroke-width="2.5" stroke-dasharray="8 8"/><ellipse cx="380" cy="235" rx="60" ry="38" fill="#2e75c715" stroke="#2e75c740" stroke-width="2"/>
+        <text x="640" y="236" text-anchor="middle" fill="#536f88" font-size="18" font-weight="800">BLUE LINE</text><text x="395" y="46" text-anchor="middle" fill="#5f7690" font-size="15" font-weight="800">하프링크 슛 위치</text>
+      </svg>`;
   }
 
   function classifyShotLocation(x, y) {
-    if (x < 18) {
-      if (y < 38) return "골라인 좌측";
-      if (y > 62) return "골라인 우측";
-      return "골대 근처";
-    }
-
-    if (x < 38) {
-      if (y < 34) return "좌측 로우 서클";
-      if (y > 66) return "우측 로우 서클";
-      return "로우 슬롯";
-    }
-
-    if (x < 60) {
-      if (y < 34) return "좌측 페이스오프 서클";
-      if (y > 66) return "우측 페이스오프 서클";
-      return "하이 슬롯";
-    }
-
-    if (x < 78) {
-      if (y < 40) return "좌측 포인트";
-      if (y > 60) return "우측 포인트";
-      return "중앙 포인트";
-    }
-
-    return "블루라인 부근";
+    if (x < 14) { if (y < 40) return "좌측 골라인"; if (y > 60) return "우측 골라인"; return "골대 근처"; }
+    if (x < 22) { if (y < 28) return "좌측 코너"; if (y > 72) return "우측 코너"; if (y < 40) return "좌측 비하인드넷"; if (y > 60) return "우측 비하인드넷"; return "크리즈 앞"; }
+    if (x < 38) { if (y < 38) return "좌측 로우 서클"; if (y > 62) return "우측 로우 서클"; return "로우 슬롯"; }
+    if (x < 54) { if (y < 37) return "좌측 하이 서클"; if (y > 63) return "우측 하이 서클"; return "하이 슬롯"; }
+    if (x < 72) { if (y < 40) return "좌측 포인트"; if (y > 60) return "우측 포인트"; return "중앙 포인트"; }
+    return "블루라인";
   }
 
   function classifyGoalLocation(x, y) {
@@ -1722,8 +2040,18 @@
 
   function loadDraftIfExists() {
     const draft = readJson(STORAGE_KEYS.draft, null);
-    if (!draft || !draft.periods) return false;
+    if (!draft) return false;
 
+    if (normalizedGameType(draft) === "game_lesson") {
+      currentGame = draft;
+      ensureLessonGame(currentGame);
+      if (draft.status === "editing") editingSavedGameId = draft.id;
+      renderLessonRecord();
+      showScreen("lessonRecord");
+      return true;
+    }
+
+    if (!draft.periods) return false;
     currentGame = draft;
     ensureGameExtras();
 
@@ -1897,9 +2225,34 @@
 
   function saveGames() {
     writeJson(STORAGE_KEYS.games, savedGames);
+    refreshGroupOptions();
+  }
+
+  function buildLessonShareText(game) {
+    const score = lessonScore(game);
+    const lines = [];
+    lines.push("🎮 게임 레슨 골리 기록");
+    lines.push(`${game.date || "-"} · ${game.title || "게임 레슨"}`);
+    if (game.rink) lines.push(`경기장: ${game.rink}`);
+    if (game.groupName) lines.push(`폴더: ${game.groupName}`);
+    lines.push(`${game.teamAName || "A"} ${score.A} : ${score.B} ${game.teamBName || "B"}`);
+    lines.push("");
+    lines.push("[골리별 기록]");
+    (game.lessonGoalies || []).forEach(goalie => {
+      const stats = lessonGoalieStats(game, goalie.goalieId);
+      lines.push(`${goalie.goalieName}: SOG ${stats.sog} / GA ${stats.ga} / SAVE ${stats.save}`);
+      lines.push(`  A골대 ${stats.byNet.A.sog}/${stats.byNet.A.ga} · B골대 ${stats.byNet.B.sog}/${stats.byNet.B.ga}`);
+    });
+    lines.push("");
+    lines.push("[로테이션]");
+    (game.lessonStints || []).forEach((stint, index) => {
+      lines.push(`${index + 1}. ${stint.goalieName} · ${stint.net}골대 · SOG ${stint.sog} / GA ${stint.ga} / ${saveRateText(stint.sog, stint.ga)}`);
+    });
+    return lines.join("\n");
   }
 
   function buildShareText(game) {
+    if (normalizedGameType(game) === "game_lesson") return buildLessonShareText(game);
     const totals = gameTotals(game);
     const records = getGoalieRecords(game);
     const lines = [];
@@ -2047,56 +2400,102 @@
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${game.date || "game"}_vs_${game.opponent || "opponent"}_goalies.txt`;
+    anchor.download = normalizedGameType(game) === "game_lesson"
+      ? `${game.date || "lesson"}_${game.title || "game_lesson"}.txt`
+      : `${game.date || "game"}_vs_${game.opponent || "opponent"}_goalies.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
 
+  function renderGameListCard(game) {
+    const type = normalizedGameType(game);
+    const typeBadge = `<span class="game-type-chip type-${type}">${gameTypeLabel(type)}</span>`;
+    if (type === "game_lesson") {
+      const score = lessonScore(game);
+      const goalieSummary = (game.lessonGoalies || []).map(goalie => {
+        const stats = lessonGoalieStats(game, goalie.goalieId);
+        return `${escapeHtml(goalie.goalieName)} ${stats.save} (${stats.sog}/${stats.ga})`;
+      }).join(" · ");
+      return `
+        <article class="game-list-card lesson-list-card">
+          <div class="list-card-badges">${typeBadge}<span class="folder-chip">📁 ${escapeHtml(gameGroupName(game))}</span></div>
+          <h3>${escapeHtml(game.date || "-")} · ${escapeHtml(game.title || "게임 레슨")}</h3>
+          <p class="game-list-meta">${escapeHtml(game.teamAName || "A")} ${score.A} : ${score.B} ${escapeHtml(game.teamBName || "B")} · ${escapeHtml(game.rink || "")}</p>
+          <p class="game-list-goalies">🥅 ${goalieSummary || "골리 기록 없음"}</p>
+          <div class="game-list-actions">
+            <button type="button" class="small-action-btn open" data-open-game="${escapeHtml(game.id)}">열기</button>
+            <button type="button" class="small-action-btn copy" data-copy-game="${escapeHtml(game.id)}">복사</button>
+          </div>
+        </article>`;
+    }
+
+    const totals = gameTotals(game);
+    const records = getGoalieRecords(game);
+    const goalieSummary = records.map(record => {
+      const rt = goalieRecordTotals(record);
+      return `${escapeHtml(record.goalieName)} ${rt.save} (${rt.sog}/${rt.ga})`;
+    }).join(" · ");
+    return `
+      <article class="game-list-card">
+        <div class="list-card-badges">${typeBadge}<span class="folder-chip">📁 ${escapeHtml(gameGroupName(game))}</span></div>
+        <h3>${escapeHtml(game.date || "-")} · vs ${escapeHtml(game.opponent || "-")}</h3>
+        <p class="game-list-meta">${escapeHtml(game.tournament || game.rink || game.homeAway || "")}</p>
+        <p class="game-list-meta">우리팀 골리 합계 · SOG ${totals.sog} · GA ${totals.ga} · SAVE ${totals.save}</p>
+        <p class="game-list-goalies">🥅 ${goalieSummary || "골리 기록 없음"}</p>
+        <div class="game-list-actions">
+          <button type="button" class="small-action-btn open" data-open-game="${escapeHtml(game.id)}">열기</button>
+          <button type="button" class="small-action-btn copy" data-copy-game="${escapeHtml(game.id)}">복사</button>
+        </div>
+      </article>`;
+  }
+
   function renderGamesList() {
-    if (savedGames.length === 0) {
-      document.getElementById("gamesList").innerHTML = `
-        <div class="empty-state">
-          저장된 경기가 없습니다.
-        </div>`;
+    refreshGroupOptions();
+    const typeFilter = gamesTypeFilter?.value || "all";
+    const groupFilter = gamesGroupFilter?.value || "all";
+    const filtered = savedGames
+      .filter(game => typeFilter === "all" || normalizedGameType(game) === typeFilter)
+      .filter(game => groupFilter === "all" || gameGroupName(game) === groupFilter)
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+    if (filtered.length === 0) {
+      document.getElementById("gamesList").innerHTML = `<div class="empty-state">조건에 맞는 저장 기록이 없습니다.</div>`;
       return;
     }
 
-    const sorted = [...savedGames].sort((a, b) => {
-      return String(b.date || "").localeCompare(String(a.date || ""));
+    const groups = {};
+    filtered.forEach(game => {
+      const folder = gameGroupName(game);
+      if (!groups[folder]) groups[folder] = [];
+      groups[folder].push(game);
     });
 
-    document.getElementById("gamesList").innerHTML = sorted.map(game => {
-      const totals = gameTotals(game);
-      const records = getGoalieRecords(game);
-
-      const goalieSummary = records.map(record => {
-        const rt = goalieRecordTotals(record);
-        return `${escapeHtml(record.goalieName)} ${rt.save} (${rt.sog}/${rt.ga})`;
-      }).join(" · ");
-
-      return `
-        <article class="game-list-card">
-          <h3>${escapeHtml(game.date || "-")} · vs ${escapeHtml(game.opponent || "-")}</h3>
-          <p class="game-list-meta">${escapeHtml(game.tournament || game.rink || game.homeAway || "")}</p>
-          <p class="game-list-meta">
-            우리팀 골리 합계 · SOG ${totals.sog} · GA ${totals.ga} · SAVE ${totals.save}
-          </p>
-          <p class="game-list-goalies">🥅 ${goalieSummary || "골리 기록 없음"}</p>
-
-          <div class="game-list-actions">
-            <button type="button" class="small-action-btn open" data-open-game="${escapeHtml(game.id)}">
-              열기
-            </button>
-            <button type="button" class="small-action-btn copy" data-copy-game="${escapeHtml(game.id)}">
-              복사
-            </button>
-          </div>
-        </article>
-      `;
-    }).join("");
+    document.getElementById("gamesList").innerHTML = Object.entries(groups).map(([folder, games]) => `
+      <section class="record-folder-section">
+        <div class="record-folder-title"><span>📁 ${escapeHtml(folder)}</span><small>${games.length}개 기록</small></div>
+        <div class="record-folder-cards">${games.map(renderGameListCard).join("")}</div>
+      </section>
+    `).join("");
   }
 
   function renderGameDetail(game) {
+    refreshDetailGroupSelect(game);
+    if (normalizedGameType(game) === "game_lesson") {
+      ensureLessonGame(game);
+      const score = lessonScore(game);
+      document.getElementById("detailSubtitle").textContent = `${game.date || "-"} · ${game.title || "게임 레슨"}`;
+      const goalieRows = (game.lessonGoalies || []).map(goalie => {
+        const stats = lessonGoalieStats(game, goalie.goalieId);
+        return `<div class="lesson-detail-goalie"><strong>${escapeHtml(goalie.goalieName)}</strong><span>SOG ${stats.sog} · GA ${stats.ga} · SAVE ${stats.save}</span><small>A골대 ${stats.byNet.A.sog}/${stats.byNet.A.ga} · B골대 ${stats.byNet.B.sog}/${stats.byNet.B.ga}</small></div>`;
+      }).join("");
+      const stints = (game.lessonStints || []).map((stint, index) => `<div class="lesson-detail-stint"><strong>${index + 1}. ${escapeHtml(stint.goalieName)} · ${stint.net}골대</strong><span>SOG ${stint.sog} · GA ${stint.ga} · ${saveRateText(stint.sog, stint.ga)}</span></div>`).join("");
+      document.getElementById("gameDetailContent").innerHTML = `
+        <section class="detail-card"><div class="list-card-badges"><span class="game-type-chip type-game_lesson">게임 레슨</span><span class="folder-chip">📁 ${escapeHtml(gameGroupName(game))}</span></div><h3>${escapeHtml(game.title || "게임 레슨")}</h3><p>${escapeHtml(game.date || "-")} · ${escapeHtml(game.rink || "-")}</p></section>
+        <section class="lesson-score-card detail-score"><div class="lesson-score-team"><span>${escapeHtml(game.teamAName || "A")}</span><strong>${score.A}</strong></div><div class="lesson-score-vs">FINAL</div><div class="lesson-score-team"><span>${escapeHtml(game.teamBName || "B")}</span><strong>${score.B}</strong></div></section>
+        <section class="detail-card"><h3>🥅 골리별 기록</h3><div class="lesson-detail-goalies">${goalieRows}</div></section>
+        <section class="detail-card"><h3>🔄 로테이션 기록</h3><div class="lesson-detail-stints">${stints || '<div class="empty-analysis">기록 없음</div>'}</div></section>`;
+      return;
+    }
     const totals = gameTotals(game);
     const records = getGoalieRecords(game);
 
@@ -2309,6 +2708,15 @@
     currentGame = JSON.parse(JSON.stringify(game));
     currentGame.status = "editing";
 
+    if (normalizedGameType(currentGame) === "game_lesson") {
+      ensureLessonGame(currentGame);
+      saveCurrentGame();
+      renderLessonRecord();
+      showScreen("lessonRecord");
+      showToast("게임 레슨 수정 모드입니다. 이전 교대 기록도 수정할 수 있습니다.");
+      return;
+    }
+
     ensureGameExtras();
     saveCurrentGame();
     renderRecordScreen(false);
@@ -2317,6 +2725,20 @@
     document.getElementById("finishGameBtn").textContent = "💾 수정 내용 저장";
     document.getElementById("discardGameBtn").textContent = "↩ 수정 취소";
   }
+
+  document.getElementById("moveGameGroupBtn").addEventListener("click", () => {
+    const game = savedGames.find(item => item.id === selectedSavedGameId);
+    if (!game) return;
+    let next = detailGroupSelect.value;
+    if (next === "__new__") {
+      next = prompt("새 그룹/폴더 이름을 입력하세요.", "")?.trim() || "";
+      if (!next) return;
+    }
+    game.groupName = next === "미분류" ? "" : next;
+    saveGames();
+    renderGameDetail(game);
+    showToast(`📁 ${gameGroupName(game)} 폴더로 이동했습니다.`);
+  });
 
   document.getElementById("editSavedGameBtn").addEventListener("click", () => {
     if (!selectedSavedGameId) return;
@@ -2456,7 +2878,7 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
-        await navigator.serviceWorker.register("./sw.js?v=22");
+        await navigator.serviceWorker.register("./sw.js?v=24");
         await navigator.serviceWorker.ready;
         serviceWorkerReady = true;
         updateConnectionStatus();
@@ -2643,17 +3065,15 @@
   // ─────────────────────────────
 
   function refreshStatsGoalieSelect() {
-    const goalieNames = [...new Set(
-      savedGames.flatMap(game => getGoalieRecords(game).map(record => record.goalieName))
-        .filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b, "ko"));
+    const goalieNames = [...new Set(savedGames.flatMap(game => {
+      if (normalizedGameType(game) === "game_lesson") return (game.lessonGoalies || []).map(item => item.goalieName);
+      return getGoalieRecords(game).map(record => record.goalieName);
+    }).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
 
-    statsGoalieSelect.innerHTML = `
-      <option value="all">전체 골리</option>
-      ${goalieNames.map(name => `
-        <option value="${escapeHtml(name)}">${escapeHtml(name)}</option>
-      `).join("")}
-    `;
+    const previous = statsGoalieSelect.value || "all";
+    statsGoalieSelect.innerHTML = `<option value="all">전체 골리</option>${goalieNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}`;
+    if ([...statsGoalieSelect.options].some(option => option.value === previous)) statsGoalieSelect.value = previous;
+    refreshGroupOptions();
   }
 
   function countBy(items, key) {
@@ -2765,159 +3185,104 @@
 
 
   function renderSeasonStats() {
-    const previousSelection = statsGoalieSelect.value || "all";
+    const previousGoalie = statsGoalieSelect.value || "all";
     refreshStatsGoalieSelect();
-
-    const optionExists = [...statsGoalieSelect.options].some(
-      option => option.value === previousSelection
-    );
-    statsGoalieSelect.value = optionExists ? previousSelection : "all";
+    if ([...statsGoalieSelect.options].some(o => o.value === previousGoalie)) statsGoalieSelect.value = previousGoalie;
 
     const selected = statsGoalieSelect.value || "all";
-
+    const typeFilter = statsGameTypeSelect?.value || "all";
+    const groupFilter = statsGroupSelect?.value || "all";
     const appearances = [];
-    savedGames.forEach(game => {
-      getGoalieRecords(game).forEach(record => {
-        if (selected === "all" || record.goalieName === selected) {
-          appearances.push({ game, record });
+
+    savedGames
+      .filter(game => typeFilter === "all" || normalizedGameType(game) === typeFilter)
+      .filter(game => groupFilter === "all" || gameGroupName(game) === groupFilter)
+      .forEach(game => {
+        if (normalizedGameType(game) === "game_lesson") {
+          (game.lessonGoalies || []).forEach(goalie => {
+            if (selected !== "all" && goalie.goalieName !== selected) return;
+            const totals = lessonGoalieStats(game, goalie.goalieId);
+            appearances.push({ game, goalieName: goalie.goalieName, totals, goals: [], shootout: { count: 0, saved: 0, goals: 0 } });
+          });
+          return;
         }
+        getGoalieRecords(game).forEach(record => {
+          if (selected !== "all" && record.goalieName !== selected) return;
+          appearances.push({ game, goalieName: record.goalieName, totals: goalieRecordTotals(record), goals: record.goals || [], shootout: goalieShootoutTotals(game, record) });
+        });
       });
-    });
 
     const empty = document.getElementById("statsEmpty");
     const content = document.getElementById("statsContent");
-
     if (appearances.length === 0) {
       empty.classList.remove("hidden");
       content.classList.add("hidden");
       return;
     }
-
     empty.classList.add("hidden");
     content.classList.remove("hidden");
 
-    let totalSog = 0;
-    let totalGa = 0;
-    let totalShootoutSaved = 0;
-    let totalShootoutGoals = 0;
-    let totalShootoutAttempts = 0;
+    let totalSog = 0, totalGa = 0, totalShootoutSaved = 0, totalShootoutGoals = 0, totalShootoutAttempts = 0;
     const allGoals = [];
-
-    appearances.forEach(({ game, record }) => {
-      const totals = goalieRecordTotals(record);
-      totalSog += totals.sog;
-      totalGa += totals.ga;
-
-      (record.goals || []).forEach(goal => allGoals.push(goal));
-
-      const so = goalieShootoutTotals(game, record);
-      totalShootoutSaved += so.saved;
-      totalShootoutGoals += so.goals;
-      totalShootoutAttempts += so.count;
+    appearances.forEach(item => {
+      totalSog += Number(item.totals.sog || 0);
+      totalGa += Number(item.totals.ga || 0);
+      (item.goals || []).forEach(goal => allGoals.push(goal));
+      totalShootoutSaved += Number(item.shootout?.saved || 0);
+      totalShootoutGoals += Number(item.shootout?.goals || 0);
+      totalShootoutAttempts += Number(item.shootout?.count || 0);
     });
 
-    const seasonSave = totalSog > 0
-      ? `${(((totalSog - totalGa) / totalSog) * 100).toFixed(1)}%`
-      : "—";
-
+    const seasonSave = saveRateText(totalSog, totalGa);
     const distinctGameCount = new Set(appearances.map(item => item.game.id)).size;
     const divisor = appearances.length || 1;
-
-    document.getElementById("statsGames").textContent =
-      selected === "all" ? distinctGameCount : appearances.length;
+    document.getElementById("statsGames").textContent = distinctGameCount;
     document.getElementById("statsSave").textContent = seasonSave;
     document.getElementById("statsAvgSog").textContent = (totalSog / divisor).toFixed(1);
     document.getElementById("statsAvgGa").textContent = (totalGa / divisor).toFixed(2);
 
-    const comparable = appearances
-      .map(({ game, record }) => {
-        const totals = goalieRecordTotals(record);
-        const numericSave = totals.sog > 0
-          ? (totals.sog - totals.ga) / totals.sog
-          : -1;
-        return { game, record, totals, numericSave };
-      })
+    const comparable = appearances.map(item => ({ ...item, numericSave: item.totals.sog > 0 ? (item.totals.sog - item.totals.ga) / item.totals.sog : -1 }))
       .sort((a, b) => b.numericSave - a.numericSave || b.totals.sog - a.totals.sog);
-
     const best = comparable[0];
     document.getElementById("bestGameText").innerHTML = best && best.numericSave >= 0
-      ? `
-        ${escapeHtml(best.game.date || "-")} ·
-        ${escapeHtml(best.record.goalieName || "-")} vs
-        ${escapeHtml(best.game.opponent || "-")}<br>
-        SOG ${best.totals.sog} · GA ${best.totals.ga} · SAVE ${best.totals.save}
-      `
+      ? `${escapeHtml(best.game.date || "-")} · ${escapeHtml(best.goalieName || "-")} · ${gameTypeLabel(best.game)}<br>SOG ${best.totals.sog} · GA ${best.totals.ga} · SAVE ${best.totals.save}`
       : "유효한 SOG 기록이 없습니다.";
 
     const shootoutDecided = totalShootoutSaved + totalShootoutGoals;
-    const shootoutSave = shootoutDecided > 0
-      ? `${((totalShootoutSaved / shootoutDecided) * 100).toFixed(1)}%`
-      : "—";
+    const shootoutSave = shootoutDecided > 0 ? `${((totalShootoutSaved / shootoutDecided) * 100).toFixed(1)}%` : "—";
+    document.getElementById("shootoutStatsText").textContent = totalShootoutAttempts > 0
+      ? `총 ${totalShootoutAttempts}명 · 막음 ${totalShootoutSaved} · 실점 ${totalShootoutGoals} · SAVE ${shootoutSave}`
+      : "기록 없음";
 
-    document.getElementById("shootoutStatsText").textContent =
-      totalShootoutAttempts > 0
-        ? `총 ${totalShootoutAttempts}명 · 막음 ${totalShootoutSaved} · 실점 ${totalShootoutGoals} · SAVE ${shootoutSave}`
-        : "기록 없음";
-
-    const primaryCauseCounts = {};
-    const attackTypeCounts = {};
-    const finishTypeCounts = {};
-    const movementTagCounts = {};
-
+    const primaryCauseCounts = {}, attackTypeCounts = {}, finishTypeCounts = {}, movementTagCounts = {};
     allGoals.forEach(goal => {
       const primary = goal.causePrimary || goal.reason || "";
       const attack = goal.attackType || "";
       const finish = goal.finishType || "";
-
       if (primary) primaryCauseCounts[primary] = (primaryCauseCounts[primary] || 0) + 1;
       if (attack) attackTypeCounts[attack] = (attackTypeCounts[attack] || 0) + 1;
       if (finish) finishTypeCounts[finish] = (finishTypeCounts[finish] || 0) + 1;
-
-      (Array.isArray(goal.movementTags) ? goal.movementTags : []).forEach(tag => {
-        if (tag) movementTagCounts[tag] = (movementTagCounts[tag] || 0) + 1;
-      });
+      (Array.isArray(goal.movementTags) ? goal.movementTags : []).forEach(tag => { if (tag) movementTagCounts[tag] = (movementTagCounts[tag] || 0) + 1; });
     });
-
-    renderRankList("reasonStats", Object.entries(primaryCauseCounts)
-      .sort((a, b) => b[1] - a[1]));
-    renderRankList("attackTypeStats", Object.entries(attackTypeCounts)
-      .sort((a, b) => b[1] - a[1]));
-    renderRankList("finishStats", Object.entries(finishTypeCounts)
-      .sort((a, b) => b[1] - a[1]));
-    renderRankList("movementTagStats", Object.entries(movementTagCounts)
-      .sort((a, b) => b[1] - a[1]));
-
-    renderWeaknessSummary(
-      primaryCauseCounts,
-      attackTypeCounts,
-      finishTypeCounts,
-      movementTagCounts,
-      allGoals.length
-    );
-
+    renderRankList("reasonStats", Object.entries(primaryCauseCounts).sort((a,b)=>b[1]-a[1]));
+    renderRankList("attackTypeStats", Object.entries(attackTypeCounts).sort((a,b)=>b[1]-a[1]));
+    renderRankList("finishStats", Object.entries(finishTypeCounts).sort((a,b)=>b[1]-a[1]));
+    renderRankList("movementTagStats", Object.entries(movementTagCounts).sort((a,b)=>b[1]-a[1]));
+    renderWeaknessSummary(primaryCauseCounts, attackTypeCounts, finishTypeCounts, movementTagCounts, allGoals.length);
     renderRankList("locationStats", countBy(allGoals, "location"));
     renderRankList("bodyStats", countBy(allGoals, "body"));
 
-    const sortedAppearances = [...appearances].sort((a, b) =>
-      String(b.game.date || "").localeCompare(String(a.game.date || ""))
-    );
-
-    document.getElementById("statsGameRows").innerHTML = sortedAppearances.map(({ game, record }) => {
-      const totals = goalieRecordTotals(record);
-
-      return `
-        <div class="stats-game-row">
-          <div>
-            <strong>${escapeHtml(game.date || "-")} · ${escapeHtml(record.goalieName || "-")}</strong>
-            <small>vs ${escapeHtml(game.opponent || "-")} · SOG ${totals.sog} · GA ${totals.ga}</small>
-          </div>
-          <div class="stats-game-save">${totals.save}</div>
-        </div>
-      `;
-    }).join("");
+    document.getElementById("statsGameRows").innerHTML = [...appearances]
+      .sort((a,b)=>String(b.game.date||"").localeCompare(String(a.game.date||"")))
+      .map(item => `<div class="stats-game-row"><div><strong>${escapeHtml(item.game.date || "-")} · ${escapeHtml(item.goalieName)}</strong><small>${gameTypeLabel(item.game)} · 📁 ${escapeHtml(gameGroupName(item.game))} · SOG ${item.totals.sog} · GA ${item.totals.ga}</small></div><div class="stats-game-save">${item.totals.save}</div></div>`)
+      .join("");
   }
 
   statsGoalieSelect.addEventListener("change", renderSeasonStats);
+  statsGameTypeSelect.addEventListener("change", renderSeasonStats);
+  statsGroupSelect.addEventListener("change", renderSeasonStats);
+  gamesTypeFilter.addEventListener("change", renderGamesList);
+  gamesGroupFilter.addEventListener("change", renderGamesList);
 
   // ─────────────────────────────
   // 화면 이동
@@ -2928,15 +3293,28 @@
     showScreen("goalies");
   });
 
-  document.getElementById("newGameBtn").addEventListener("click", openNewGame);
+  document.getElementById("newGameBtn").addEventListener("click", showGameTypePicker);
+
+  gameTypeModal.addEventListener("click", event => {
+    const button = event.target.closest("[data-new-game-type]");
+    if (!button) return;
+    const type = button.dataset.newGameType;
+    hideGameTypePicker();
+    if (type === "game_lesson") openLessonSetup(); else openNewGame(type);
+  });
+  document.getElementById("cancelGameTypeModal").addEventListener("click", hideGameTypePicker);
 
   document.getElementById("backFromGoalies").addEventListener("click", () => {
     goalieForm.classList.add("hidden");
     showScreen("home");
   });
 
-  document.getElementById("backFromNewGame").addEventListener("click", () => {
+  document.getElementById("backFromNewGame").addEventListener("click", () => showScreen("home"));
+  document.getElementById("backFromLessonSetup").addEventListener("click", () => showScreen("home"));
+  document.getElementById("backFromLessonRecord").addEventListener("click", () => {
+    saveCurrentGame();
     showScreen("home");
+    showToast("게임 레슨 기록은 자동 저장되어 있습니다.");
   });
 
   document.getElementById("backFromRecord").addEventListener("click", () => {
@@ -2953,6 +3331,7 @@
   });
 
   document.getElementById("gamesBtn").addEventListener("click", () => {
+    refreshGroupOptions();
     renderGamesList();
     showScreen("games");
   });
@@ -2969,6 +3348,8 @@
   document.getElementById("statsBtn").addEventListener("click", () => {
     refreshStatsGoalieSelect();
     statsGoalieSelect.value = "all";
+    statsGameTypeSelect.value = "all";
+    statsGroupSelect.value = "all";
     renderSeasonStats();
     showScreen("stats");
   });
@@ -3001,6 +3382,7 @@
 
   renderGoalies();
   renderPeriodCards();
+  refreshGroupOptions();
   renderGamesList();
   updateBackupSummary();
   updateConnectionStatus();
