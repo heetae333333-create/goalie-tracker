@@ -68,6 +68,8 @@
   let serviceWorkerReady = false;
   let toastTimer = null;
   let pendingGameType = "official";
+  let currentShotTool = "point";
+  let drawingShotState = null;
 
   function readJson(key, fallback) {
     try {
@@ -1199,6 +1201,15 @@
       if (typeof goal.shotLocation !== "string") goal.shotLocation = "";
       if (typeof goal.shotX !== "number") goal.shotX = null;
       if (typeof goal.shotY !== "number") goal.shotY = null;
+      if (!goal.shotDiagram || typeof goal.shotDiagram !== "object") {
+        goal.shotDiagram = { points: [], lines: [], paths: [] };
+      }
+      if (!Array.isArray(goal.shotDiagram.points)) goal.shotDiagram.points = [];
+      if (!Array.isArray(goal.shotDiagram.lines)) goal.shotDiagram.lines = [];
+      if (!Array.isArray(goal.shotDiagram.paths)) goal.shotDiagram.paths = [];
+      if (goal.shotX != null && goal.shotY != null && goal.shotDiagram.points.length === 0 && goal.shotDiagram.lines.length === 0 && goal.shotDiagram.paths.length === 0) {
+        goal.shotDiagram.points.push({ x: goal.shotX, y: goal.shotY });
+      }
     });
 
     if (!currentGame.shootout || typeof currentGame.shootout !== "object") {
@@ -1257,6 +1268,7 @@
         shotLocation: "",
         shotX: null,
         shotY: null,
+        shotDiagram: { points: [], lines: [], paths: [] },
         body: "",
         memo: "",
         goalieId: currentGame.activeGoalieId || currentGame.goalieId || "",
@@ -1285,86 +1297,92 @@
     return `
       <svg class="goal-svg" viewBox="0 0 600 360" aria-hidden="true">
         <defs>
-          <linearGradient id="iceGrad25" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id="iceGrad26" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stop-color="#ffffff"/>
             <stop offset="100%" stop-color="#eaf2f9"/>
           </linearGradient>
-          <pattern id="netPattern25" width="26" height="26" patternUnits="userSpaceOnUse">
+          <pattern id="netPattern26" width="26" height="26" patternUnits="userSpaceOnUse">
             <path d="M 0 0 L 26 26 M 26 0 L 0 26" stroke="#b9c5d2" stroke-width="2"/>
           </pattern>
         </defs>
-
-        <rect x="0" y="0" width="600" height="360" fill="url(#iceGrad25)"/>
-        <ellipse cx="300" cy="320" rx="250" ry="24" fill="#cfd9e4" opacity=".45"/>
-
-        <path d="M80 310 L105 72 Q300 22 495 72 L520 310"
-              fill="none" stroke="#d62424" stroke-width="22"
-              stroke-linecap="round" stroke-linejoin="round"/>
-
-        <path d="M105 80 Q300 38 495 80 L495 310 L105 310 Z"
-              fill="url(#netPattern25)" opacity=".9"/>
-
-        <line x1="105" y1="310" x2="495" y2="310"
-              stroke="#d62424" stroke-width="22" stroke-linecap="round"/>
-
-        <path d="M105 80 L145 44 M495 80 L455 44"
-              stroke="#d62424" stroke-width="12" stroke-linecap="round"/>
-
-        <line x1="235" y1="70" x2="235" y2="310" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
-        <line x1="365" y1="70" x2="365" y2="310" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
-        <line x1="105" y1="150" x2="495" y2="150" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
-        <line x1="105" y1="230" x2="495" y2="230" stroke="#7f8d9d" stroke-width="2" opacity=".35"/>
-
-        <!-- goalie silhouette -->
-        <g class="goalie-silhouette" opacity=".95">
-          <ellipse cx="300" cy="314" rx="95" ry="14" fill="#8ea0b4" opacity=".35"/>
-          <rect x="279" y="84" width="42" height="42" rx="15" fill="#1f2f44"/>
-          <rect x="270" y="92" width="60" height="24" rx="9" fill="#f6f7f8" stroke="#9aa7b5" stroke-width="2"/>
-          <path d="M258 124 Q300 109 342 124 L350 196 Q300 212 250 196 Z" fill="#18314d"/>
-          <path d="M242 140 L258 134 L270 182 L251 190 Z" fill="#f3f5f7" stroke="#9aa7b5" stroke-width="2"/>
-          <path d="M342 135 L356 140 L349 192 L331 186 Z" fill="#f3f5f7" stroke="#9aa7b5" stroke-width="2"/>
-          <ellipse cx="231" cy="165" rx="16" ry="22" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
-          <ellipse cx="369" cy="170" rx="18" ry="13" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
-          <rect x="266" y="196" width="20" height="89" rx="9" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
-          <rect x="314" y="196" width="20" height="89" rx="9" fill="#f2f4f6" stroke="#9aa7b5" stroke-width="2"/>
-          <path d="M350 222 L414 212 L418 220 L352 233 Z" fill="#d0a04d" stroke="#8b6a34" stroke-width="2"/>
-          <line x1="407" y1="212" x2="422" y2="212" stroke="#8b6a34" stroke-width="4" stroke-linecap="round"/>
-          <line x1="300" y1="240" x2="300" y2="275" stroke="#18314d" stroke-width="8" stroke-linecap="round"/>
+        <rect x="0" y="0" width="600" height="360" fill="url(#iceGrad26)"/>
+        <ellipse cx="300" cy="320" rx="250" ry="24" fill="#cfd9e4" opacity=".42"/>
+        <path d="M80 308 L105 72 Q300 22 495 72 L520 308" fill="none" stroke="#d62424" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M105 80 Q300 38 495 80 L495 308 L105 308 Z" fill="url(#netPattern26)" opacity=".88"/>
+        <line x1="105" y1="308" x2="495" y2="308" stroke="#d62424" stroke-width="22" stroke-linecap="round"/>
+        <path d="M105 80 L145 44 M495 80 L455 44" stroke="#d62424" stroke-width="12" stroke-linecap="round"/>
+        <g class="goalie-silhouette" opacity=".97">
+          <ellipse cx="300" cy="305" rx="110" ry="15" fill="#9fafbf" opacity=".38"/>
+          <circle cx="300" cy="92" r="28" fill="#eceff3" stroke="#7f8e9d" stroke-width="3"/>
+          <path d="M282 80 h36 v24 h-36z" fill="#d62626" opacity=".75"/>
+          <path d="M255 120 Q300 105 345 120 L353 195 Q300 212 247 195 Z" fill="#171717"/>
+          <path d="M248 122 L216 185 L240 196 L268 138 Z" fill="#101010"/>
+          <path d="M352 122 L384 185 L360 196 L332 138 Z" fill="#101010"/>
+          <ellipse cx="215" cy="186" rx="20" ry="16" fill="#df2e2e"/>
+          <ellipse cx="382" cy="182" rx="24" ry="18" fill="#df2e2e"/>
+          <path d="M248 203 L223 286 L262 300 L282 208 Z" fill="#ffffff" stroke="#a9b5c1" stroke-width="2"/>
+          <path d="M352 203 L318 208 L338 300 L377 286 Z" fill="#ffffff" stroke="#a9b5c1" stroke-width="2"/>
+          <path d="M261 201 L242 289 L268 296 L288 206 Z" fill="#d62626" opacity=".9"/>
+          <path d="M339 201 L312 206 L332 296 L357 289 Z" fill="#d62626" opacity=".9"/>
+          <path d="M288 129 v163" stroke="#ffffff" stroke-width="4" opacity=".8"/>
+          <path d="M312 129 v163" stroke="#ffffff" stroke-width="4" opacity=".8"/>
+          <path d="M310 210 L404 212 L408 220 L311 226 Z" fill="#f2f2f2" stroke="#9aa7b5" stroke-width="2"/>
+          <path d="M390 212 h24" stroke="#c98b3a" stroke-width="7" stroke-linecap="round"/>
+          <path d="M300 215 v65" stroke="#1d1d1d" stroke-width="8" stroke-linecap="round"/>
         </g>
-
-        <text x="300" y="344" text-anchor="middle" fill="#6b7788" font-size="18" font-weight="700">
-          골대 안쪽을 터치하세요
-        </text>
+        <text x="300" y="344" text-anchor="middle" fill="#6b7788" font-size="18" font-weight="700">골대 안쪽을 터치하세요</text>
       </svg>
     `;
   }
 
   function rinkSvgMarkup() {
     return `
-      <svg class="rink-svg" viewBox="0 0 760 470" aria-hidden="true">
-        <defs><linearGradient id="rinkIce24" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#edf6fd"/></linearGradient></defs>
-        <rect x="10" y="10" width="740" height="450" rx="78" fill="url(#rinkIce24)" stroke="#9eabb7" stroke-width="5"/>
-        <line x1="115" y1="35" x2="115" y2="435" stroke="#db5050" stroke-width="4" opacity=".45"/>
-        <line x1="575" y1="14" x2="575" y2="456" stroke="#2e75c7" stroke-width="6"/>
-        <line x1="115" y1="235" x2="575" y2="235" stroke="#96b5d1" stroke-width="2" stroke-dasharray="8 8" opacity=".5"/>
-        <path d="M115 185 A80 50 0 0 1 115 285" fill="#d3e8fb" stroke="#db5050" stroke-width="3"/><line x1="115" y1="185" x2="115" y2="285" stroke="#db5050" stroke-width="3"/>
-        <path d="M78 196 L115 196 L115 274 L78 274 Q52 235 78 196 Z" fill="#e8f2fc" stroke="#db2c2c" stroke-width="5"/>
-        <path d="M115 135 L210 162 L210 308 L115 335" fill="none" stroke="#c75858" stroke-width="2.5" opacity=".8"/>
-        <circle cx="275" cy="145" r="72" fill="none" stroke="#e4a1ab" stroke-width="3"/><circle cx="275" cy="325" r="72" fill="none" stroke="#e4a1ab" stroke-width="3"/>
-        <circle cx="275" cy="145" r="5.5" fill="#d92a2a"/><circle cx="275" cy="325" r="5.5" fill="#d92a2a"/>
-        <line x1="258" y1="145" x2="292" y2="145" stroke="#d92a2a" stroke-width="2"/><line x1="275" y1="128" x2="275" y2="162" stroke="#d92a2a" stroke-width="2"/><line x1="258" y1="325" x2="292" y2="325" stroke="#d92a2a" stroke-width="2"/><line x1="275" y1="308" x2="275" y2="342" stroke="#d92a2a" stroke-width="2"/>
-        <path d="M115 176 L365 126 L430 235 L365 344 L115 294" fill="#1b74d112" stroke="#1b74d145" stroke-width="2.5" stroke-dasharray="8 8"/><ellipse cx="380" cy="235" rx="60" ry="38" fill="#2e75c715" stroke="#2e75c740" stroke-width="2"/>
-        <text x="640" y="236" text-anchor="middle" fill="#536f88" font-size="18" font-weight="800">BLUE LINE</text><text x="395" y="46" text-anchor="middle" fill="#5f7690" font-size="15" font-weight="800">하프링크 슛 위치</text>
+      <svg class="rink-svg" viewBox="0 0 760 640" aria-hidden="true">
+        <rect x="6" y="6" width="748" height="628" rx="74" fill="#f7fbff" stroke="#2d2d2d" stroke-width="3"/>
+        <rect x="6" y="6" width="748" height="20" fill="#2542c7" opacity=".98"/>
+        <line x1="6" y1="230" x2="754" y2="230" stroke="#ff3333" stroke-width="2.6"/>
+        <line x1="6" y1="520" x2="754" y2="520" stroke="#ff3333" stroke-width="4"/>
+        <path d="M 315 520 A 60 60 0 0 1 445 520" fill="none" stroke="#1439ea" stroke-width="5"/>
+        <circle cx="185" cy="360" r="130" fill="none" stroke="#ff3333" stroke-width="2.5"/>
+        <circle cx="575" cy="360" r="130" fill="none" stroke="#ff3333" stroke-width="2.5"/>
+        <circle cx="185" cy="360" r="10" fill="#ff2222"/>
+        <circle cx="575" cy="360" r="10" fill="#ff2222"/>
+        <circle cx="185" cy="280" r="5" fill="#2044f0"/>
+        <circle cx="575" cy="280" r="5" fill="#2044f0"/>
+        <line x1="145" y1="345" x2="215" y2="345" stroke="#ff2222" stroke-width="2"/>
+        <line x1="145" y1="375" x2="215" y2="375" stroke="#ff2222" stroke-width="2"/>
+        <line x1="185" y1="305" x2="185" y2="415" stroke="#ff2222" stroke-width="2"/>
+        <line x1="535" y1="345" x2="605" y2="345" stroke="#ff2222" stroke-width="2"/>
+        <line x1="535" y1="375" x2="605" y2="375" stroke="#ff2222" stroke-width="2"/>
+        <line x1="575" y1="305" x2="575" y2="415" stroke="#ff2222" stroke-width="2"/>
+        <line x1="30" y1="40" x2="730" y2="40" stroke="#7f8897" stroke-width="1" opacity=".12"/>
+        <text x="380" y="78" text-anchor="middle" fill="#58687d" font-size="20" font-weight="800">하프 링크 슛 위치</text>
+        <text x="380" y="550" text-anchor="middle" fill="#6d7987" font-size="18" font-weight="700">골대를 기준으로 슛 위치를 그리세요</text>
       </svg>`;
   }
 
   function classifyShotLocation(x, y) {
-    if (x < 14) { if (y < 40) return "좌측 골라인"; if (y > 60) return "우측 골라인"; return "골대 근처"; }
-    if (x < 22) { if (y < 28) return "좌측 코너"; if (y > 72) return "우측 코너"; if (y < 40) return "좌측 비하인드넷"; if (y > 60) return "우측 비하인드넷"; return "크리즈 앞"; }
-    if (x < 38) { if (y < 38) return "좌측 로우 서클"; if (y > 62) return "우측 로우 서클"; return "로우 슬롯"; }
-    if (x < 54) { if (y < 37) return "좌측 하이 서클"; if (y > 63) return "우측 하이 서클"; return "하이 슬롯"; }
-    if (x < 72) { if (y < 40) return "좌측 포인트"; if (y > 60) return "우측 포인트"; return "중앙 포인트"; }
-    return "블루라인";
+    if (y < 15) return "블루라인";
+    if (y < 30) {
+      if (x < 35) return "좌측 상단 존";
+      if (x > 65) return "우측 상단 존";
+      return "중앙 상단 존";
+    }
+    if (y < 50) {
+      if (x < 35) return "좌측 하이 서클";
+      if (x > 65) return "우측 하이 서클";
+      return "하이 슬롯";
+    }
+    if (y < 72) {
+      if (x < 33) return "좌측 로우 서클";
+      if (x > 67) return "우측 로우 서클";
+      return "로우 슬롯";
+    }
+    if (x < 24) return "좌측 코너";
+    if (x > 76) return "우측 코너";
+    if (x < 42) return "좌측 골라인";
+    if (x > 58) return "우측 골라인";
+    return "크리즈 정면";
   }
 
   function classifyGoalLocation(x, y) {
@@ -1381,55 +1399,57 @@
   }
 
   const GOAL_CAUSE_CONFIG = {
-    "Rush": {
-      attackTypes: ["일반 러시"],
-      finishes: ["Shot", "Deke", "One-timer"]
+    "러시": {
+      attackTypes: ["와이드 엔트리", "센터 드라이브", "딜레이 러시", "풀업 슛"],
+      finishes: ["직접 슛", "원타이머", "데크", "백핸드 마무리"]
     },
-    "Odd-man Rush": {
-      attackTypes: ["2-on-1", "3-on-2", "3-on-1"],
-      finishes: ["Shot", "East-West", "One-timer", "Backdoor"]
+    "오드맨 러시": {
+      attackTypes: ["2-on-1", "3-on-2", "3-on-1", "트레일러 합류"],
+      finishes: ["직접 슛", "이스트-웨스트 패스 후 슛", "백도어", "원타이머"]
     },
-    "Breakaway": {
-      attackTypes: ["1-on-0"],
-      finishes: ["Shot", "Deke"]
+    "브레이크어웨이": {
+      attackTypes: ["정면 단독", "각도 있는 단독", "수비 압박 동반 단독"],
+      finishes: ["직접 슛", "데크", "백핸드", "포핸드 드래그"]
     },
-    "Turnover": {
-      attackTypes: ["DZ Turnover", "NZ Turnover", "OZ Turnover"],
-      finishes: ["Shot", "Breakaway", "Odd-man Rush"]
+    "턴오버": {
+      attackTypes: ["DZ 턴오버", "NZ 턴오버", "OZ 턴오버", "패스 미스 후 역습"],
+      finishes: ["즉시 슛", "오드맨 연결", "브레이크어웨이 전환", "슬롯 침투 후 슛"]
     },
-    "Zone Play": {
-      attackTypes: ["공격지역 점유"],
-      finishes: ["Point Shot", "Screen", "Tip", "One-timer"]
+    "디펜스슛": {
+      attackTypes: ["블루라인 슛", "하이 슬롯 슛", "포인트 원타이머", "중거리 손목슛"],
+      finishes: ["클린샷", "스크린 동반", "팁", "리바운드 유도"]
     },
-    "In-tight": {
-      attackTypes: ["골문 근거리"],
-      finishes: ["Shot", "Deke", "Jam"]
+    "존 플레이": {
+      attackTypes: ["사이드월 플레이", "하이 사이클", "로우 사이클", "포스트 플레이"],
+      finishes: ["크로스-크리즈", "백도어", "원타이머", "슬롯 슛"]
     },
-    "Rebound": {
-      attackTypes: ["세컨드 찬스"],
-      finishes: ["Rebound Shot"]
+    "리바운드": {
+      attackTypes: ["패드 리바운드", "사이드 리바운드", "하이 리바운드", "세컨드 찬스"],
+      finishes: ["리바운드 슛", "잼 플레이", "백핸드 푸시", "재차 원타이머"]
     },
-    "Scramble": {
-      attackTypes: ["골문 앞 혼전"],
-      finishes: ["Jam", "Loose Puck"]
+    "스크램블": {
+      attackTypes: ["크리즈 혼전", "루즈퍽", "포스트 전환", "박스아웃 실패"],
+      finishes: ["잼 플레이", "루즈퍽 마무리", "근거리 푸시", "백도어 터치"]
     },
-    "Behind Net": {
-      attackTypes: ["골대 뒤 전개"],
-      finishes: ["Wraparound", "Backdoor"]
+    "비하인드 넷": {
+      attackTypes: ["래프어라운드", "골대 뒤 패스", "비하인드 넷 회전", "숏사이드 플레이"],
+      finishes: ["래프어라운드", "백도어", "크리즈 패스 후 슛", "근거리 슛"]
     },
-    "Special Teams": {
-      attackTypes: ["PP", "PK"],
-      finishes: ["Shot", "One-timer", "Screen", "Tip"]
+    "스페셜팀": {
+      attackTypes: ["파워플레이", "페널티킬", "6on5", "세트 플레이"],
+      finishes: ["원타이머", "스크린", "팁", "백도어"]
     }
   };
 
   const MOVEMENT_TAGS = [
-    "East-West",
-    "Cross-crease",
-    "Backdoor",
-    "Low-to-High",
-    "High-to-Low",
-    "Behind-the-net Pass"
+    "이스트-웨스트",
+    "크로스-크리즈",
+    "로우 투 하이",
+    "하이 투 로우",
+    "백도어",
+    "팁",
+    "스크린",
+    "비하인드 넷 패스"
   ];
 
   function renderGoalAnalysis() {
@@ -1447,8 +1467,8 @@
 
     const primarySituations = Object.keys(GOAL_CAUSE_CONFIG);
     const bodyParts = [
-      "글러브", "블로커", "5홀", "패드", "스틱",
-      "숄더", "헤드", "몸통", "기타"
+      "글러브", "블로커", "5홀", "좌측 패드", "우측 패드",
+      "스틱", "숄더", "헤드", "몸통", "기타"
     ];
 
     goalAnalysisList.innerHTML = currentGame.goals.map((goal, index) => {
@@ -1462,6 +1482,7 @@
         : "";
 
       const tags = Array.isArray(goal.movementTags) ? goal.movementTags : [];
+      const shotDiagram = goal.shotDiagram || { points: [], lines: [], paths: [] };
 
       return `
         <article class="analysis-item" data-goal-index="${index}">
@@ -1469,16 +1490,16 @@
 
           ${legacyText}
 
-          <div class="cause-flow">
+          <div class="cause-flow cause-flow-compact">
             <label>
-              <span class="cause-step">① 발생상황</span>
+              <span class="cause-step">① 발생 상황</span>
               <select data-goal-field="causePrimary">
                 ${selectOptions(primarySituations, goal.causePrimary)}
               </select>
             </label>
 
             <label>
-              <span class="cause-step">② 공격형태</span>
+              <span class="cause-step">② 공격 형태</span>
               <select data-goal-field="attackType" ${goal.causePrimary ? "" : "disabled"}>
                 ${selectOptions(config.attackTypes, goal.attackType)}
               </select>
@@ -1492,7 +1513,7 @@
             </label>
 
             <div class="wide movement-tag-wrap">
-              <div class="cause-step">④ 추가태그 · 패스/골리 이동</div>
+              <div class="cause-step">④ 보조 태그</div>
               <div class="movement-tag-grid">
                 ${MOVEMENT_TAGS.map(tag => `
                   <button
@@ -1509,35 +1530,29 @@
           <div class="analysis-grid">
             <div class="wide shot-goal-map-grid">
               <div class="shot-map-wrap">
-                <div class="goal-map-title">슛 위치 — 링크장을 터치하세요</div>
+                <div class="goal-map-title">슛 위치 / 슛 경로 — 도구를 선택해 그리세요</div>
+                <div class="shot-toolbox">
+                  <button type="button" class="shot-tool-btn ${currentShotTool === "point" ? "selected" : ""}" data-shot-tool="point">📍 점</button>
+                  <button type="button" class="shot-tool-btn ${currentShotTool === "line" ? "selected" : ""}" data-shot-tool="line">／ 선</button>
+                  <button type="button" class="shot-tool-btn ${currentShotTool === "pen" ? "selected" : ""}" data-shot-tool="pen">✏ 자유</button>
+                  <button type="button" class="shot-tool-btn" data-shot-undo="${index}">↶ 실행취소</button>
+                  <button type="button" class="shot-tool-btn danger" data-clear-shot-location="${index}">🗑 전체 지우기</button>
+                </div>
                 <div class="shot-rink-map">
                   ${rinkSvgMarkup()}
-                  ${goal.shotX != null && goal.shotY != null ? `
-                    <svg class="shot-path-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                      <line x1="11.5" y1="50" x2="${goal.shotX}" y2="${goal.shotY}"></line>
-                    </svg>
-                  ` : ""}
-                  <div class="shot-touch-layer" data-shot-touch="${index}">
-                    ${goal.shotX != null && goal.shotY != null ? `
-                      <div class="shot-selected-dot"
-                        style="left:${goal.shotX}%;top:${goal.shotY}%"></div>
-                    ` : ""}
-                  </div>
+                  <svg class="shot-draw-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    ${shotDiagram.lines.map(line => `<line class="shot-draw-line" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"></line>`).join("")}
+                    ${shotDiagram.paths.map(path => `<polyline class="shot-draw-path" points="${path.map(point => `${point.x},${point.y}`).join(" ")}"></polyline>`).join("")}
+                    ${shotDiagram.points.map(point => `<circle class="shot-draw-point" cx="${point.x}" cy="${point.y}" r="1.8"></circle>`).join("")}
+                  </svg>
+                  <div class="shot-touch-layer" data-shot-touch="${index}"></div>
                 </div>
 
                 <div class="goal-zone-label">
-                  슛 위치:
+                  슛 시작 위치:
                   <span data-shot-location-text="${index}">
                     ${escapeHtml(goal.shotLocation || "미선택")}
                   </span>
-                </div>
-
-                <div class="goal-map-actions">
-                  <button type="button"
-                    class="clear-location-btn"
-                    data-clear-shot-location="${index}">
-                    슛 위치 지우기
-                  </button>
                 </div>
               </div>
 
@@ -1545,11 +1560,6 @@
                 <div class="goal-map-title">실점 위치 — 골대 안쪽을 터치하세요</div>
                 <div class="goal-map" data-goal-map="${index}">
                   ${goalSvgMarkup()}
-                  ${goal.x != null && goal.y != null ? `
-                    <svg class="goal-path-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                      <line x1="50" y1="93" x2="${goal.x}" y2="${goal.y}"></line>
-                    </svg>
-                  ` : ""}
                   <div class="goal-touch-layer" data-goal-touch="${index}">
                     ${goal.x != null && goal.y != null ? `
                       <div class="goal-selected-dot"
@@ -1589,6 +1599,128 @@
         </article>
       `;
     }).join("");
+  }
+
+  function ensureShotDiagram(goal) {
+    if (!goal.shotDiagram || typeof goal.shotDiagram !== "object") {
+      goal.shotDiagram = { points: [], lines: [], paths: [] };
+    }
+    if (!Array.isArray(goal.shotDiagram.points)) goal.shotDiagram.points = [];
+    if (!Array.isArray(goal.shotDiagram.lines)) goal.shotDiagram.lines = [];
+    if (!Array.isArray(goal.shotDiagram.paths)) goal.shotDiagram.paths = [];
+    return goal.shotDiagram;
+  }
+
+  function setShotOrigin(goal, x, y) {
+    goal.shotX = Number(x.toFixed(2));
+    goal.shotY = Number(y.toFixed(2));
+    goal.shotLocation = classifyShotLocation(goal.shotX, goal.shotY);
+  }
+
+  function getShotToolButtonMarkup() {
+    return '';
+  }
+
+  function shotPointFromEvent(layer, event) {
+    const rect = layer.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
+    return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) };
+  }
+
+  function commitShotPoint(index, point) {
+    const goal = currentGame.goals[index];
+    const diagram = ensureShotDiagram(goal);
+    diagram.points.push(point);
+    setShotOrigin(goal, point.x, point.y);
+    renderGoalAnalysis();
+    saveCurrentGame();
+    showToast(`슛 위치: ${goal.shotLocation}`);
+  }
+
+  function undoShotDrawing(index) {
+    const goal = currentGame.goals[index];
+    if (!goal) return;
+    const diagram = ensureShotDiagram(goal);
+    if (diagram.paths.length) diagram.paths.pop();
+    else if (diagram.lines.length) diagram.lines.pop();
+    else if (diagram.points.length) diagram.points.pop();
+    if (!diagram.points.length && !diagram.lines.length && !diagram.paths.length) {
+      goal.shotX = null;
+      goal.shotY = null;
+      goal.shotLocation = "";
+    }
+    renderGoalAnalysis();
+    saveCurrentGame();
+  }
+
+  function clearShotDrawing(index) {
+    const goal = currentGame.goals[index];
+    if (!goal) return;
+    goal.shotX = null;
+    goal.shotY = null;
+    goal.shotLocation = "";
+    goal.shotDiagram = { points: [], lines: [], paths: [] };
+    renderGoalAnalysis();
+    saveCurrentGame();
+  }
+
+  function createShotPreview(layer, tool) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.classList.add("shot-preview-overlay");
+    let shape;
+    if (tool === "line") {
+      shape = document.createElementNS(svgNS, "line");
+      shape.classList.add("shot-draw-line", "preview-shape");
+      svg.appendChild(shape);
+    } else {
+      shape = document.createElementNS(svgNS, "polyline");
+      shape.classList.add("shot-draw-path", "preview-shape");
+      svg.appendChild(shape);
+    }
+    layer.appendChild(svg);
+    return { svg, shape };
+  }
+
+  function updateShotPreview(state) {
+    if (!state || !state.preview) return;
+    if (state.tool === "line") {
+      state.preview.shape.setAttribute("x1", state.start.x);
+      state.preview.shape.setAttribute("y1", state.start.y);
+      state.preview.shape.setAttribute("x2", state.current.x);
+      state.preview.shape.setAttribute("y2", state.current.y);
+    } else if (state.tool === "pen") {
+      state.preview.shape.setAttribute("points", state.points.map(point => `${point.x},${point.y}`).join(" "));
+    }
+  }
+
+  function finishShotDrawing(cancelled = false) {
+    if (!drawingShotState || !currentGame) return;
+    const state = drawingShotState;
+    const goal = currentGame.goals[state.index];
+    if (!cancelled && goal) {
+      const diagram = ensureShotDiagram(goal);
+      if (state.tool === "line") {
+        diagram.lines.push({ x1: state.start.x, y1: state.start.y, x2: state.current.x, y2: state.current.y });
+        setShotOrigin(goal, state.start.x, state.start.y);
+      } else if (state.tool === "pen") {
+        if (state.points.length === 1) {
+          diagram.points.push(state.points[0]);
+          setShotOrigin(goal, state.points[0].x, state.points[0].y);
+        } else if (state.points.length > 1) {
+          diagram.paths.push(state.points);
+          setShotOrigin(goal, state.points[0].x, state.points[0].y);
+        }
+      }
+      saveCurrentGame();
+      renderGoalAnalysis();
+      showToast(`슛 위치: ${goal.shotLocation || '기록됨'}`);
+    }
+    try { state.preview?.svg?.remove(); } catch (e) {}
+    drawingShotState = null;
   }
 
   function updateGoalSelectField(event) {
@@ -1639,21 +1771,16 @@
       return;
     }
 
-    const shotTouchLayer = event.target.closest("[data-shot-touch]");
-    if (shotTouchLayer) {
-      const index = Number(shotTouchLayer.dataset.shotTouch);
-      const rect = shotTouchLayer.getBoundingClientRect();
-      const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
-      const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
-      const location = classifyShotLocation(x, y);
-
-      currentGame.goals[index].shotX = Number(x.toFixed(2));
-      currentGame.goals[index].shotY = Number(y.toFixed(2));
-      currentGame.goals[index].shotLocation = location;
-
+    const shotToolButton = event.target.closest("[data-shot-tool]");
+    if (shotToolButton) {
+      currentShotTool = shotToolButton.dataset.shotTool;
       renderGoalAnalysis();
-      saveCurrentGame();
-      showToast(`슛 위치: ${location}`);
+      return;
+    }
+
+    const undoShotButton = event.target.closest("[data-shot-undo]");
+    if (undoShotButton) {
+      undoShotDrawing(Number(undoShotButton.dataset.shotUndo));
       return;
     }
 
@@ -1677,12 +1804,7 @@
 
     const clearShotButton = event.target.closest("[data-clear-shot-location]");
     if (clearShotButton) {
-      const index = Number(clearShotButton.dataset.clearShotLocation);
-      currentGame.goals[index].shotX = null;
-      currentGame.goals[index].shotY = null;
-      currentGame.goals[index].shotLocation = "";
-      renderGoalAnalysis();
-      saveCurrentGame();
+      clearShotDrawing(Number(clearShotButton.dataset.clearShotLocation));
       return;
     }
 
@@ -1695,6 +1817,55 @@
       renderGoalAnalysis();
       saveCurrentGame();
     }
+  });
+
+  goalAnalysisList.addEventListener("pointerdown", event => {
+    if (!currentGame) return;
+    const layer = event.target.closest("[data-shot-touch]");
+    if (!layer) return;
+    event.preventDefault();
+    const index = Number(layer.dataset.shotTouch);
+    const point = shotPointFromEvent(layer, event);
+
+    if (currentShotTool === "point") {
+      commitShotPoint(index, point);
+      return;
+    }
+
+    drawingShotState = {
+      index,
+      tool: currentShotTool,
+      layer,
+      start: point,
+      current: point,
+      points: [point],
+      preview: createShotPreview(layer, currentShotTool)
+    };
+    updateShotPreview(drawingShotState);
+    if (layer.setPointerCapture) {
+      try { layer.setPointerCapture(event.pointerId); } catch (error) {}
+    }
+  });
+
+  goalAnalysisList.addEventListener("pointermove", event => {
+    if (!drawingShotState) return;
+    const point = shotPointFromEvent(drawingShotState.layer, event);
+    drawingShotState.current = point;
+    if (drawingShotState.tool === "pen") {
+      const last = drawingShotState.points[drawingShotState.points.length - 1];
+      if (!last || Math.hypot(point.x - last.x, point.y - last.y) >= 0.5) {
+        drawingShotState.points.push(point);
+      }
+    }
+    updateShotPreview(drawingShotState);
+  });
+
+  window.addEventListener("pointerup", () => {
+    if (drawingShotState) finishShotDrawing(false);
+  });
+
+  window.addEventListener("pointercancel", () => {
+    if (drawingShotState) finishShotDrawing(false);
   });
 
   function setShootoutCount(count, mode) {
@@ -2915,7 +3086,7 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
-        await navigator.serviceWorker.register("./sw.js?v=25");
+        await navigator.serviceWorker.register("./sw.js?v=26");
         await navigator.serviceWorker.ready;
         serviceWorkerReady = true;
         updateConnectionStatus();

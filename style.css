@@ -2072,3 +2072,104 @@ button:disabled {
 .edit-panel-title {
   margin-bottom: 10px;
 }
+
+
+/* v2.6 shot drawing tools */
+.shot-toolbox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.shot-tool-btn {
+  border: 1.5px solid #c7d7ea;
+  background: #fff;
+  color: #1d4f8c;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.shot-tool-btn.selected {
+  background: #0b63ce;
+  color: #fff;
+  border-color: #0b63ce;
+}
+
+.shot-tool-btn.danger {
+  color: #b83232;
+}
+
+.shot-rink-map,
+.goal-map {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.shot-touch-layer,
+.goal-touch-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  touch-action: none;
+}
+
+.shot-draw-overlay,
+.shot-preview-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.shot-draw-line,
+.shot-draw-path,
+.preview-shape {
+  fill: none;
+  stroke: #1357d6;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.12));
+}
+
+.shot-draw-point {
+  fill: #1357d6;
+  stroke: #fff;
+  stroke-width: .5;
+}
+
+.goal-selected-dot,
+.shot-selected-dot {
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  margin-top: -7px;
+}
+
+.goal-svg,
+.rink-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.goalie-silhouette {
+  pointer-events: none;
+}
+
+.cause-flow-compact {
+  row-gap: 12px;
+}
+
+@media (max-width: 780px) {
+  .shot-tool-btn {
+    flex: 1 1 calc(33.333% - 8px);
+    text-align: center;
+    padding: 10px 6px;
+  }
+}
